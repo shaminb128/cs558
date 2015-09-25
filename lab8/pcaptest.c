@@ -59,7 +59,7 @@ int main (int argc, char** argv) {
 	int ret = 0;						// Return val
 
 	printf("Scanning available devices ... ");
-	if ( (ret = pcap_findalldevs(&devide_list, err) != 0 ) {
+	if ( (ret = pcap_findalldevs(&device_list, err)) != 0 ) {
 		fprintf(stderr, "Error scanning devices, with error code %d, and error message %s\n", ret, err);
 		exit(1);
 	}
@@ -100,28 +100,28 @@ int main (int argc, char** argv) {
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 	total++;
 	int size = (int) header->len;
-	struct iphdr *iph = (struct iphdr*)(buffer + sizeof(struct ethhdr));
+	struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
 	switch (iph->protocol) {
     	case 1:  //ICMP Protocol
       		++icmp;
-      		print_icmp_packet( buffer , size);
+      		print_icmp_packet( packet , size);
       		break;
     
     	case 6:  //TCP Protocol
       		++tcp;
-     	 	print_tcp_packet(buffer , size);
+     	 	print_tcp_packet(packet , size);
       		break;
 
 	    case 17: //UDP Protocol
       		++udp;
-      		print_udp_packet(buffer , size);
+      		print_udp_packet(packet , size);
       		break;
     
     	default: //Some Other Protocol like ARP etc.
       		others++;
       		break;
   	}
-  	printf("TCP : %d   UDP : %d   ICMP : %d   IGMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , igmp , others , total);
+  	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
 }
 
 void print_ethernet_header(const u_char *Buffer, int Size)
@@ -281,8 +281,6 @@ void print_icmp_packet(const u_char * Buffer , int Size)
   
   	fprintf(logfile , "   |-Code : %d\n",(unsigned int)(icmph->code));
   	fprintf(logfile , "   |-Checksum : %d\n",ntohs(icmph->checksum));
-  	fprintf(logfile , "   |-ID       : %d\n",ntohs(icmph->id));
-  	fprintf(logfile , "   |-Sequence : %d\n",ntohs(icmph->sequence));
   	fprintf(logfile , "\n");
 
   	fprintf(logfile , "IP Header\n");
