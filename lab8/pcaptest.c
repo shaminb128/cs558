@@ -29,6 +29,7 @@ void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 void process_ip_packet(const u_char * , int);
 void print_ethernet_header(const u_char *, int );
 void print_ip_packet(const u_char * , int );
+int calc_ip_checksum(const u_char*);
 void print_tcp_packet(const u_char *  , int );
 void print_udp_packet(const u_char * , int );
 void print_icmp_packet(const u_char * , int );
@@ -144,7 +145,7 @@ void print_ip_header(const u_char * Buffer, int Size)
 	unsigned short iphdrlen;
     
 	struct iphdr *iph = (struct iphdr *)(Buffer  + sizeof(struct ethhdr) );
-	iphdrlen =iph->ihl*4;
+	iphdrlen =iph->ihl*4;	/* ip header length is defined in unit of 32-bit word */
   
 	memset(&source, 0, sizeof(source));
   	source.sin_addr.s_addr = iph->saddr;
@@ -164,6 +165,27 @@ void print_ip_header(const u_char * Buffer, int Size)
   	fprintf(logfile , "   |-Checksum              : %d\n",ntohs(iph->check));
   	fprintf(logfile , "   |-Source IP             : %s\n" , inet_ntoa(source.sin_addr) );
   	fprintf(logfile , "   |-Destination IP        : %s\n" , inet_ntoa(dest.sin_addr) );
+}
+
+int calc_ip_checksum(const u_char* Buffer) {
+	struct iphdr *iph = (struct iphdr*)(Buffer + sizeof(struct ethhdr));
+	int sum = 0;
+	#if __BYTE_ORDER == __LITTLE_ENDIAN
+		sum = (((u_short)iph->ihl) << 12) | (((u_short)iph->version) << 8) | ((u_short)iph->ip_tos);
+	#elif
+		sum = (((u_short)iph->version) << 12) | (((u_short)iph->ihl) << 8) | ((u_short)iph->ip_tos);
+	#else
+	# error	"Please fix <bits/endian.h>"
+	#endif
+	sum += ntohs(iph->tot_len);
+	sum += ntohs(iph->id);
+	sum += ntohs(iph->frag_off);
+	sum += (((u_short)iph->ttl) << 8) | (u_short)iph->protocol;
+	sum += iph->saddr;
+	sum += iph->daddr;
+
+	int chk = (((u_short)(sum >> 16)) && 0xf) + ((u_short)(sum) && 0xffff);
+	return ~((u_short)chk)
 }
 
 void print_tcp_packet(const u_char * Buffer, int Size)
