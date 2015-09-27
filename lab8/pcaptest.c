@@ -27,13 +27,14 @@
 
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 void process_ip_packet(const u_char * , int);
-void print_ethernet_header(const u_char *, int );
-void print_ip_packet(const u_char * , int );
-int calc_ip_checksum(const u_char*);
-void print_tcp_packet(const u_char *  , int );
-void print_udp_packet(const u_char * , int );
-void print_icmp_packet(const u_char * , int );
-void PrintData (const u_char * , int );
+void print_ethernet_header(const u_char *, int);
+void print_ip_packet(const u_char * , int);
+u_short calc_ip_checksum(const u_char*);
+u_short calc_icmp_checksum(const u_char*, int);
+void print_tcp_packet(const u_char *  , int);
+void print_udp_packet(const u_char * , int);
+void print_icmp_packet(const u_char * , int);
+void PrintData (const u_char * , int);
 
 /* Global Variables */
 FILE* logfile;
@@ -92,7 +93,7 @@ int main (int argc, char** argv) {
 	}
 
 	//Put the device in sniff loop
-  	pcap_loop(pcap_handle , -1 , process_packet , NULL);	// -1 means an infinite loop
+  	pcap_loop(pcap_handle , 10 , process_packet , NULL);	// -1 means an infinite loop
 
 	fclose(logfile);
 	return 0;
@@ -155,6 +156,7 @@ void print_ip_header(const u_char * Buffer, int Size)
   
   	fprintf(logfile , "\n");
   	fprintf(logfile , "IP Header\n");
+  	fprintf(logfile , "Header Length: %u\n", iphdrlen);
   	fprintf(logfile , "   |-IP Version            : %d\n",(unsigned int)iph->version);
   	fprintf(logfile , "   |-IP Header Length      : %d DWORDS or %d Bytes\n",(unsigned int)iph->ihl,((unsigned int)(iph->ihl))*4);
   	fprintf(logfile , "   |-Type Of Service       : %d\n",(unsigned int)iph->tos);
@@ -165,27 +167,30 @@ void print_ip_header(const u_char * Buffer, int Size)
   	fprintf(logfile , "   |-Checksum              : %d\n",ntohs(iph->check));
   	fprintf(logfile , "   |-Source IP             : %s\n" , inet_ntoa(source.sin_addr) );
   	fprintf(logfile , "   |-Destination IP        : %s\n" , inet_ntoa(dest.sin_addr) );
+
+  	fprintf(logfile , "=====> ip_checksum test result: %u\n", calc_ip_checksum(Buffer));
 }
 
-int calc_ip_checksum(const u_char* Buffer) {
+u_short calc_ip_checksum(const u_char* Buffer) {
 	struct iphdr *iph = (struct iphdr*)(Buffer + sizeof(struct ethhdr));
-	int sum = 0;
-	#if __BYTE_ORDER == __LITTLE_ENDIAN
-		sum = (((u_short)iph->ihl) << 12) | (((u_short)iph->version) << 8) | ((u_short)iph->ip_tos);
-	#elif
-		sum = (((u_short)iph->version) << 12) | (((u_short)iph->ihl) << 8) | ((u_short)iph->ip_tos);
-	#else
-	# error	"Please fix <bits/endian.h>"
-	#endif
-	sum += ntohs(iph->tot_len);
-	sum += ntohs(iph->id);
-	sum += ntohs(iph->frag_off);
-	sum += (((u_short)iph->ttl) << 8) | (u_short)iph->protocol;
-	sum += iph->saddr;
-	sum += iph->daddr;
+    unsigned int sum = 0;
+    #if __BYTE_ORDER == __LITTLE_ENDIAN
+            sum = (((u_short)iph->version) << 12) | (((u_short)iph->ihl) << 8) | ((u_short)iph->tos);
+    #elif __BYTE_ORDER == __BIG_ENDIAN
+            sum = (((u_short)iph->ihl) << 12) | (((u_short)iph->version) << 8) | ((u_short)iph->tos);
+    #else
+    # error "Please fix <bits/endian.h>"
+    #endif
+    sum += ntohs(iph->tot_len);
+    sum += ntohs(iph->id);
+    sum += ntohs(iph->frag_off);
+    sum += (((u_short)iph->ttl) << 8) | (u_short)iph->protocol;
+    sum += (ntohs((iph->saddr) & 0xffff) + ntohs((iph->saddr >> 16) & 0xffff));
+    sum += (ntohs((iph->daddr) & 0xffff) + ntohs((iph->daddr >> 16) & 0xffff));
 
-	int chk = (((u_short)(sum >> 16)) && 0xf) + ((u_short)(sum) && 0xffff);
-	return ~((u_short)chk)
+    int chk = (((u_short)(sum >> 16)) & 0xf) + ((u_short)(sum) & 0xffff);
+    return ~((u_short)chk);
+
 }
 
 void print_tcp_packet(const u_char * Buffer, int Size)
@@ -223,11 +228,14 @@ void print_tcp_packet(const u_char * Buffer, int Size)
   	fprintf(logfile , "                        DATA Dump                         ");
   	fprintf(logfile , "\n");
     
+    fprintf(logfile , "Ethernet Header\n");
+  	PrintData(Buffer, sizeof(struct ethhdr) );
+
   	fprintf(logfile , "IP Header\n");
-  	PrintData(Buffer,iphdrlen);
+  	PrintData(Buffer + sizeof(struct ethhdr), iphdrlen);
     
   	fprintf(logfile , "TCP Header\n");
-  	PrintData(Buffer+iphdrlen,tcph->doff*4);
+  	PrintData(Buffer + sizeof(struct ethhdr) + iphdrlen, tcph->doff*4);
     
   	fprintf(logfile , "Data Payload\n");  
   	PrintData(Buffer + header_size , Size - header_size );
@@ -245,7 +253,7 @@ void print_udp_packet(const u_char *Buffer , int Size)
   
   	struct udphdr *udph = (struct udphdr*)(Buffer + iphdrlen  + sizeof(struct ethhdr));
   
-  	int header_size =  sizeof(struct ethhdr) + iphdrlen + sizeof udph;
+  	int header_size =  sizeof(struct ethhdr) + iphdrlen + sizeof(udph);
   
   	fprintf(logfile , "\n\n***********************UDP Packet*************************\n");
   
@@ -258,11 +266,14 @@ void print_udp_packet(const u_char *Buffer , int Size)
   	fprintf(logfile , "   |-UDP Checksum     : %d\n" , ntohs(udph->check));
   
   	fprintf(logfile , "\n");
+  	fprintf(logfile , "Ethernet Header\n");
+  	PrintData(Buffer, sizeof(struct ethhdr) );
+
   	fprintf(logfile , "IP Header\n");
-  	PrintData(Buffer , iphdrlen);
+  	PrintData(Buffer + sizeof(struct ethhdr), iphdrlen);
     
   	fprintf(logfile , "UDP Header\n");
-  	PrintData(Buffer+iphdrlen , sizeof udph);
+  	PrintData(Buffer + sizeof(struct ethhdr) + iphdrlen , sizeof(udph));
     
   	fprintf(logfile , "Data Payload\n");  
   
@@ -281,7 +292,7 @@ void print_icmp_packet(const u_char * Buffer , int Size)
   
   	struct icmphdr *icmph = (struct icmphdr *)(Buffer + iphdrlen  + sizeof(struct ethhdr));
   
-  	int header_size =  sizeof(struct ethhdr) + iphdrlen + sizeof icmph;
+  	int header_size =  sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr);
   
   	fprintf(logfile , "\n\n***********************ICMP Packet*************************\n"); 
   
@@ -290,7 +301,8 @@ void print_icmp_packet(const u_char * Buffer , int Size)
   	fprintf(logfile , "\n");
     
   	fprintf(logfile , "ICMP Header\n");
-  	fprintf(logfile , "   |-Type : %d",(unsigned int)(icmph->type));
+  	fprintf(logfile , "Header Length: %lu\n", sizeof(struct icmphdr));
+  	fprintf(logfile , "   |-Type 			: %d\n",(unsigned int)(icmph->type));
       
   	if((unsigned int)(icmph->type) == 11)
   	{
@@ -301,15 +313,22 @@ void print_icmp_packet(const u_char * Buffer , int Size)
     	fprintf(logfile , "  (ICMP Echo Reply)\n");
   	}
   
-  	fprintf(logfile , "   |-Code : %d\n",(unsigned int)(icmph->code));
-  	fprintf(logfile , "   |-Checksum : %d\n",ntohs(icmph->checksum));
+  	fprintf(logfile , "   |-Code 			: %d\n",(unsigned int)(icmph->code));
+  	fprintf(logfile , "   |-Checksum 		: %d\n",ntohs(icmph->checksum));
+  	fprintf(logfile , "   |-Echo id 		: %d\n",ntohs(((icmph->un).echo).id));
+  	fprintf(logfile , "   |-Echo sequence 	: %d\n",ntohs(((icmph->un).echo).sequence));
   	fprintf(logfile , "\n");
 
+  	fprintf(logfile , "=====> ICMP checksum test result: %u\n", calc_icmp_checksum(Buffer, Size));
+
+  	fprintf(logfile , "Ethernet Header\n");
+  	PrintData(Buffer, sizeof(struct ethhdr) );
+
   	fprintf(logfile , "IP Header\n");
-  	PrintData(Buffer,iphdrlen);
-    
-  	fprintf(logfile , "UDP Header\n");
-  	PrintData(Buffer + iphdrlen , sizeof icmph);
+  	PrintData(Buffer + sizeof(struct ethhdr), iphdrlen);
+
+  	fprintf(logfile , "ICMP Header\n");
+  	PrintData(Buffer + sizeof(struct ethhdr) + iphdrlen, sizeof(struct icmphdr));
     
   	fprintf(logfile , "Data Payload\n");  
   
@@ -317,6 +336,32 @@ void print_icmp_packet(const u_char * Buffer , int Size)
   	PrintData(Buffer + header_size , (Size - header_size) );
   
   	fprintf(logfile , "\n###########################################################");
+}
+
+u_short calc_icmp_checksum(const u_char* Buffer, int Size) {
+	struct iphdr *iph = (struct iphdr *)(Buffer  + sizeof(struct ethhdr));
+  	int iphdrlen = iph->ihl * 4;
+
+  	u_char* ptr = Buffer + sizeof(struct ethhdr) + iphdrlen;
+  	int packetLen = Size - sizeof(struct ethhdr) + iphdrlen;
+  	printf("Icmp Packet Length: %d\n", packetLen);
+	unsigned int sum = 0;
+	int i = 0;
+	for (; i < packetLen-1; i = i + 2 ) {
+		if (i != 2) {
+			sum += (*ptr << 8) | *(ptr+1);
+		}
+		ptr = ptr + 2;
+	}
+	if (i == packetLen-1) {
+		sum += *(ptr+1);
+	}
+
+	
+	sum = (sum & 0xffff) + ((sum >> 16) & 0xffff);
+	// Do this once more to prevent the carry outs from causing another unhandled carry out
+	sum = (sum & 0xffff) + ((sum >> 16) & 0xffff);
+	return (u_short)(~sum);
 }
 
 void PrintData (const u_char * data , int Size)
