@@ -1,4 +1,7 @@
-#include <pcap.h>
+/**
+ * CS 558L Lab8
+ */
+
 #include <stdio.h>
 #include <stdlib.h> // for exit()
 #include <string.h> //for memset
@@ -11,125 +14,7 @@
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 
-/**
-* REFERENCE:
-* struct sockaddr_in {
-*     short            sin_family;   // e.g. AF_INET
-*     unsigned short   sin_port;     // e.g. htons(3490)
-*     struct in_addr   sin_addr;     // see struct in_addr, below
-*     char             sin_zero[8];  // zero this if you want to
-* };
-
-* struct in_addr {
-*     unsigned long s_addr;  // load with inet_aton()
-* };
-*/
-
-void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
-void process_ip_packet(const u_char * , int);
-void print_ethernet_header(const u_char *, int);
-void print_ip_packet(const u_char * , int);
-u_short calc_ip_checksum(const u_char*);
-u_short calc_icmp_checksum(const u_char*, int);
-void print_tcp_packet(const u_char *  , int);
-void print_udp_packet(const u_char * , int);
-void print_icmp_packet(const u_char * , int);
-void PrintData (const u_char * , int);
-
-/* Global Variables */
-FILE* logfile;
-struct sockaddr_in source;
-struct sockaddr_in dest;
-int tcp = 0;
-int udp = 0;
-int icmp = 0;
-int others = 0;
-int total = 0;
-
-
-int main (int argc, char** argv) {
-	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
-	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
-	pcap_t *pcap_handle = NULL;
-
-	char err[128];						// Holds the error
-	char *device_name = NULL;
-	char devices[10][64];				// For holding all available devices
-
-	int count = 0;
-	int n = 0;
-	int ret = 0;						// Return val
-
-	printf("Scanning available devices ... ");
-	if ( (ret = pcap_findalldevs(&device_list, err)) != 0 ) {
-		fprintf(stderr, "Error scanning devices, with error code %d, and error message %s\n", ret, err);
-		exit(1);
-	}
-	printf("DONE\n");
-
-	printf("Here are the available devices:\n");
-	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
-		printf("%d. %s\t-\t%s\n", count, device_ptr->name, device_ptr->description);
-		struct pcap_addr* addrptr = device_ptr->addresses;
-		while (addrptr) {
-			printf("\t|-addr: %s\n", addrptr->addr->sa_data);
-			addrptr = addrptr->next;
-		}
-		if (device_ptr->name != NULL) {
-			strcpy(devices[count], device_ptr->name);
-		}
-		count++;
-	}
-
-	printf("Which device do you want to sniff? Enter the number:\n");
-	scanf("%d", &n);
-	device_name = devices[n];
-
-	printf("Trying to open device %s to sniff ... ", device_name);
-	if ( (pcap_handle = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {
-		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
-		exit(1);
-	}
-	printf( "DONE\n");
-
-	if ( (logfile = fopen("packets.log", "w")) == NULL) {
-		fprintf(stderr, "Error opening packets.log\n");
-		exit(1);
-	}
-
-	//Put the device in sniff loop
-  	pcap_loop(pcap_handle , 10 , process_packet , NULL);	// -1 means an infinite loop
-
-	fclose(logfile);
-	return 0;
-}
-
-void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
-	total++;
-	int size = (int) header->len;
-	struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
-	switch (iph->protocol) {
-    	case 1:  //ICMP Protocol
-      		++icmp;
-      		print_icmp_packet( packet , size);
-      		break;
-    
-    	case 6:  //TCP Protocol
-      		++tcp;
-     	 	print_tcp_packet(packet , size);
-      		break;
-
-	    case 17: //UDP Protocol
-      		++udp;
-      		print_udp_packet(packet , size);
-      		break;
-    
-    	default: //Some Other Protocol like ARP etc.
-      		others++;
-      		break;
-  	}
-  	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
-}
+#include "packet_util.h"
 
 void print_ethernet_header(const u_char *Buffer, int Size)
 {
@@ -415,4 +300,3 @@ void PrintData (const u_char * data , int Size)
     }
   }
 }
-
