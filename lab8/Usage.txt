@@ -1,0 +1,6 @@
+Usage
+
+1. Ping rtr1, rtr2, node3, node4
+2. Check arp -a to confirm that respective MAC addresses are present
+3. Run route -n and update the routing table file accordingly
+4. Build and execute

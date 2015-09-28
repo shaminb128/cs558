@@ -53,7 +53,7 @@ int udp = 0;
 int icmp = 0;
 int others = 0;
 int total = 0;
-
+rt_table *rt_tbl_list;
 
 int main (int argc, char** argv) {
 
