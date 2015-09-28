@@ -14,7 +14,7 @@
 #include "packet_util.h"
 
 
-
+FILE* logfile;
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 
 int main (int argc, char** argv) {
@@ -53,9 +53,9 @@ int main (int argc, char** argv) {
 		}
 	}
 
-	printf("Trying to open device %s to sniff ... ", device[0]);
-	if ( (pcap_handle = pcap_open_live(device[0], BUFSIZ, 1, 100, err)) == NULL ) {
-		fprintf(stderr, "Error opening device %s, with error message %s\n", device[0], err);
+	printf("Trying to open device %s to sniff ... ", devices[0]);
+	if ( (pcap_handle = pcap_open_live(devices[0], BUFSIZ, 1, 100, err)) == NULL ) {
+		fprintf(stderr, "Error opening device %s, with error message %s\n", devices[0], err);
 		exit(1);
 	}
 	printf( "DONE\n");

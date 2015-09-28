@@ -16,7 +16,7 @@
 
 #include "packet_util.h"
 
-void print_ethernet_header(const u_char *Buffer, int Size)
+void print_ethernet_header(FILE* logfile, const u_char *Buffer, int Size)
 {
 	// adapted from <linux/if_ether.h>
  	struct ethhdr *eth = (struct ethhdr *)Buffer;
@@ -29,9 +29,9 @@ void print_ethernet_header(const u_char *Buffer, int Size)
   	fprintf(logfile , "   |-Protocol                : %u \n",(unsigned short)eth->h_proto);
 }
 
-void print_ip_header(const u_char * Buffer, int Size)
+void print_ip_header(FILE* logfile, const u_char * Buffer, int Size)
 {
-	print_ethernet_header(Buffer , Size);
+	print_ethernet_header(logfile, Buffer , Size);
 
 	unsigned short iphdrlen;
     
@@ -83,7 +83,7 @@ u_short calc_ip_checksum(const u_char* Buffer) {
 
 }
 
-void print_tcp_packet(const u_char * Buffer, int Size)
+void print_tcp_packet(FILE* logfile, const u_char * Buffer, int Size)
 {
 	unsigned short iphdrlen;
   
@@ -96,7 +96,7 @@ void print_tcp_packet(const u_char * Buffer, int Size)
   
 	fprintf(logfile , "\n\n***********************TCP Packet*************************\n");  
     
-	print_ip_header(Buffer,Size);
+	print_ip_header(logfile, Buffer, Size);
     
   	fprintf(logfile , "\n");
   	fprintf(logfile , "TCP Header\n");
@@ -119,21 +119,21 @@ void print_tcp_packet(const u_char * Buffer, int Size)
   	fprintf(logfile , "\n");
     
     fprintf(logfile , "Ethernet Header\n");
-  	PrintData(Buffer, sizeof(struct ethhdr) );
+  	PrintData(logfile, Buffer, sizeof(struct ethhdr) );
 
   	fprintf(logfile , "IP Header\n");
-  	PrintData(Buffer + sizeof(struct ethhdr), iphdrlen);
+  	PrintData(logfile, Buffer + sizeof(struct ethhdr), iphdrlen);
     
   	fprintf(logfile , "TCP Header\n");
-  	PrintData(Buffer + sizeof(struct ethhdr) + iphdrlen, tcph->doff*4);
+  	PrintData(logfile, Buffer + sizeof(struct ethhdr) + iphdrlen, tcph->doff*4);
     
   	fprintf(logfile , "Data Payload\n");  
-  	PrintData(Buffer + header_size , Size - header_size );
+  	PrintData(logfile, Buffer + header_size , Size - header_size );
             
   	fprintf(logfile , "\n###########################################################");
 }
 
-void print_udp_packet(const u_char *Buffer , int Size)
+void print_udp_packet(FILE* logfile, const u_char *Buffer , int Size)
 {
   
   	unsigned short iphdrlen;
@@ -147,7 +147,7 @@ void print_udp_packet(const u_char *Buffer , int Size)
   
   	fprintf(logfile , "\n\n***********************UDP Packet*************************\n");
   
-  	print_ip_header(Buffer,Size);     
+  	print_ip_header(logfile, Buffer, Size);     
   
   	fprintf(logfile , "\nUDP Header\n");
   	fprintf(logfile , "   |-Source Port      : %d\n" , ntohs(udph->source));
@@ -157,23 +157,23 @@ void print_udp_packet(const u_char *Buffer , int Size)
   
   	fprintf(logfile , "\n");
   	fprintf(logfile , "Ethernet Header\n");
-  	PrintData(Buffer, sizeof(struct ethhdr) );
+  	PrintData(logfile, Buffer, sizeof(struct ethhdr) );
 
   	fprintf(logfile , "IP Header\n");
-  	PrintData(Buffer + sizeof(struct ethhdr), iphdrlen);
+  	PrintData(logfile, Buffer + sizeof(struct ethhdr), iphdrlen);
     
   	fprintf(logfile , "UDP Header\n");
-  	PrintData(Buffer + sizeof(struct ethhdr) + iphdrlen , sizeof(udph));
+  	PrintData(logfile, Buffer + sizeof(struct ethhdr) + iphdrlen , sizeof(udph));
     
   	fprintf(logfile , "Data Payload\n");  
   
   	//Move the pointer ahead and reduce the size of string
-  	PrintData(Buffer + header_size , Size - header_size);
+  	PrintData(logfile, Buffer + header_size , Size - header_size);
   
   	fprintf(logfile , "\n###########################################################");
 }
 
-void print_icmp_packet(const u_char * Buffer , int Size)
+void print_icmp_packet(FILE* logfile, const u_char * Buffer , int Size)
 {
   	unsigned short iphdrlen;
   
@@ -186,12 +186,12 @@ void print_icmp_packet(const u_char * Buffer , int Size)
   
   	fprintf(logfile , "\n\n***********************ICMP Packet*************************\n"); 
   
-  	print_ip_header(Buffer , Size);
+  	print_ip_header(logfile, Buffer , Size);
       
   	fprintf(logfile , "\n");
     
   	fprintf(logfile , "ICMP Header\n");
-  	fprintf(logfile , "Header Length: %lu\n", sizeof(struct icmphdr));
+  	fprintf(logfile , "Header Length: %u\n", sizeof(struct icmphdr));
   	fprintf(logfile , "   |-Type 			: %d\n",(unsigned int)(icmph->type));
       
   	if((unsigned int)(icmph->type) == 11)
@@ -212,18 +212,18 @@ void print_icmp_packet(const u_char * Buffer , int Size)
   	fprintf(logfile , "=====> ICMP checksum test result: %u\n", calc_icmp_checksum(Buffer, Size));
 
   	fprintf(logfile , "Ethernet Header\n");
-  	PrintData(Buffer, sizeof(struct ethhdr) );
+  	PrintData(logfile, Buffer, sizeof(struct ethhdr) );
 
   	fprintf(logfile , "IP Header\n");
-  	PrintData(Buffer + sizeof(struct ethhdr), iphdrlen);
+  	PrintData(logfile, Buffer + sizeof(struct ethhdr), iphdrlen);
 
   	fprintf(logfile , "ICMP Header\n");
-  	PrintData(Buffer + sizeof(struct ethhdr) + iphdrlen, sizeof(struct icmphdr));
+  	PrintData(logfile, Buffer + sizeof(struct ethhdr) + iphdrlen, sizeof(struct icmphdr));
     
   	fprintf(logfile , "Data Payload\n");  
   
   	//Move the pointer ahead and reduce the size of string
-  	PrintData(Buffer + header_size , (Size - header_size) );
+  	PrintData(logfile, Buffer + header_size , (Size - header_size) );
   
   	fprintf(logfile , "\n###########################################################");
 }
@@ -254,7 +254,7 @@ u_short calc_icmp_checksum(const u_char* Buffer, int Size) {
 	return (u_short)(~sum);
 }
 
-void PrintData (const u_char * data , int Size)
+void PrintData (FILE* logfile, const u_char * data , int Size)
 {
   int i , j;
   for(i=0 ; i < Size ; i++)
