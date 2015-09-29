@@ -16,7 +16,7 @@
 #include <sys/ioctl.h>
 #include "route.h"
 #include "packet_util.h"
-#define ETHERNET_HEADER_LEN 14
+
 /**
 * REFERENCE:
 * struct sockaddr_in {
@@ -53,8 +53,7 @@ rt_table *rt_tbl_list;
 int main (int argc, char** argv) {
 
 	createRT();
-	//rt_list = getRT();
-	printRT(rt_tbl_list);
+//	printRT(rt_tbl_list);
 
 	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
 	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
@@ -109,6 +108,11 @@ int main (int argc, char** argv) {
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, u_char *packet) {
 	total++;
+	FILE *fp = fopen("packet_log.txt", "w");
+    if (fp == NULL) {
+        fprintf(stderr, "Can't open input!\n");
+        exit(1);
+    }
 	int size = (int) header->len;
     struct ethhdr *eth = (struct ethhdr *)packet;
     struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
@@ -120,12 +124,14 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, u_char *pack
 	printf("Device Name : %s\n", dev_name );
 	printf(" TTL : %d ", (unsigned int)iph->ttl );
     printf("Checksum : %d \n", ntohs(iph->check));
+
 }
 
 
 //TODO: iface, TTL, checksum
 void modify_packet(u_char *pkt_ptr, char* iface)
 {
+
 
     struct ethhdr *eth = (struct ethhdr *)pkt_ptr;
     struct iphdr *iph = (struct iphdr*)(pkt_ptr + sizeof(struct ethhdr));
@@ -221,6 +227,8 @@ void updateIPHeader(u_char *pkt){
     struct iphdr *iph = (struct iphdr*)(pkt + sizeof(struct ethhdr));
     if(iph->ttl > 1){
         iph->ttl = iph->ttl - 1;
+        u_short checksum = calc_ip_checksum(pkt);
+        iph->check = (u_int16_t) checksum;
     }
     else if(iph->ttl == 1){
         iph->ttl = iph->ttl - 1;
@@ -229,8 +237,7 @@ void updateIPHeader(u_char *pkt){
     else {
         //TODO: sned ICMP packet
     }
-    u_short checksum = calc_icmp_checksum(pkt, 0);
-    iph->check = (u_int16_t) checksum;
+
 
 }
 
