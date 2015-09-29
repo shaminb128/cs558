@@ -181,6 +181,30 @@ void modify_packet(u_char *pkt_ptr, char* iface)
   }
 }
 
+int routing_opt(u_char* packetIn, char* myIpAddr) {
+	/* NOT_YET_IMPLEMENTED */
+	return P_NOT_YET_IMPLEMENTED;
+}
+
+int modify_packet_new(u_char* packetIn, char* iface) {
+	/* NOT_YET_IMPLEMENTED */
+	return 0;
+}
+
+int rt_lookup(struct iphdr* iph, rt_table* rtp); {
+	/* NOT_YET_IMPLEMENTED */
+	return 0;
+}
+
+int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size) {
+	/* NOT_YET_IMPLEMENTED */
+	return 0;
+}
+
+int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size) {
+	/* NOT_YET_IMPLEMENTED */
+	return 0;
+}
 
 
 

@@ -16,9 +16,10 @@
 
 typedef enum {
 	// Routing options
-	P_FORWARD,
-	P_TIMEOUT,
-	P_ICMPREPLY
+	P_FORWARD,				/* Forward the packet to next hop */
+	P_TIMEOUT,				/* Drop the packet and generate ICMP timeout reply */
+	P_ICMPREPLY,			/* Response to ICMP echo request */
+	P_NOT_YET_IMPLEMENTED	/* Used only for not-yet-implemented functions */
 } r_op;
 
 struct sockaddr getLocalMac(char *);
@@ -48,7 +49,7 @@ int routing_opt(u_char*, char*);
 int modify_packet_new(u_char*, char*);
 
 /**
- * This function takes in a packet and find the routing table entry we are
+ * This function takes in a iphdr and find the routing table entry we are
  * going to use to modify the packet. The second argument is used for pointing
  * to that routing table entry
  * 
@@ -57,19 +58,22 @@ int modify_packet_new(u_char*, char*);
  * 
  * This function should only be called within modify_packet_new()
  */
-int rt_lookup(u_char*, *rt_tbl_list);
+int rt_lookup(struct iphdr*, rt_table* );
 
 /**
  * These two functions generates ICMP support packets
  *
- * packetIn is the time-out original packet
+ * packetIn is the original packet
  * packetOut is a pointer pointing to the ICMP packet that is ready to be sent
  * interface is a containter where this function is going to put interface name
  * Size is the size of the original packet
- * This function returns the size of packetOut
+ * These functions return the size of packetOut
+ * 
+ * generate_icmp_time_exceed_packet() is a response to P_TIMEOUT
+ * generate_icmp_echo_reply_packet() is a response to P_ICMPREPLY
  */
-int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size);
-int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size);
+int generate_icmp_time_exceed_packet(u_char*, u_char*, char*, int);
+int generate_icmp_echo_reply_packet(u_char*, u_char*, char*, int);
 
 
 
