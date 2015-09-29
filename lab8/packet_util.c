@@ -233,7 +233,7 @@ u_short calc_icmp_checksum(const u_char* Buffer, int Size) {
   	int iphdrlen = iph->ihl * 4;
 
   	u_char* ptr = Buffer + sizeof(struct ethhdr) + iphdrlen;
-  	int packetLen = Size - sizeof(struct ethhdr) + iphdrlen;
+  	int packetLen = Size - sizeof(struct ethhdr) - iphdrlen;
   	printf("Icmp Packet Length: %d\n", packetLen);
 	unsigned int sum = 0;
 	int i = 0;
