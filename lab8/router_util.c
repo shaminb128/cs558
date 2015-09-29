@@ -191,7 +191,7 @@ int modify_packet_new(u_char* packetIn, char* iface) {
 	return 0;
 }
 
-int rt_lookup(struct iphdr* iph, rt_table* rtp); {
+int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 	/* NOT_YET_IMPLEMENTED */
 	return 0;
 }
