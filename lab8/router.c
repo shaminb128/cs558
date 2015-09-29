@@ -11,10 +11,17 @@
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 
+#include "route.h"
 #include "packet_util.h"
-
+#include "router_util.h"
 
 FILE* logfile;
+int tcp = 0;
+int udp = 0;
+int icmp = 0;
+int others = 0;
+int total = 0;
+
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 
 int main (int argc, char** argv) {
@@ -29,6 +36,8 @@ int main (int argc, char** argv) {
 	int count = 0;
 	int n = 0;
 	int ret = 0;						// Return val
+
+	ret = createRT();
 
 	if ( (logfile = fopen("packets.log", "w")) == NULL) {
 		fprintf(stderr, "Error opening packets.log\n");
@@ -53,14 +62,17 @@ int main (int argc, char** argv) {
 		}
 	}
 
-	printf("Trying to open device %s to sniff ... ", devices[0]);
-	if ( (pcap_handle = pcap_open_live(devices[0], BUFSIZ, 1, 100, err)) == NULL ) {
-		fprintf(stderr, "Error opening device %s, with error message %s\n", devices[0], err);
+	printf("enter device number:\n");
+    scanf("%d", &n);
+
+	printf("Trying to open device %s to sniff ... ", devices[n]);
+	if ( (pcap_handle = pcap_open_live(devices[n], BUFSIZ, 1, 100, err)) == NULL ) {
+		fprintf(stderr, "Error opening device %s, with error message %s\n", devices[n], err);
 		exit(1);
 	}
 	printf( "DONE\n");
 
-	pcap_loop(pcap_handle , 10 , process_packet , NULL);	// -1 means an infinite loop
+	pcap_loop(pcap_handle , 40 , process_packet , NULL);	// -1 means an infinite loop
 
 
 
@@ -72,8 +84,50 @@ int main (int argc, char** argv) {
 }
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+	total++;
 	char err[128];
 	int size = (int) header->len;
+	char iface[10];
+	u_char packetOut[ETH_DATA_LEN];
+
+	memcpy(packetOut, packet, size);
+	modify_packet(packetOut, iface);
+
+	fprintf(logfile , "\nThis file is going to be sent to %s\n", iface);
+
+	struct iphdr *iph = (struct iphdr*)(packetOut + sizeof(struct ethhdr));
+	switch (iph->protocol) {
+    	case 1:  //ICMP Protocol
+      		++icmp;
+      		print_icmp_packet(logfile, packetOut , size);
+      		break;
+    
+    	case 6:  //TCP Protocol
+      		++tcp;
+     	 	print_tcp_packet(logfile, packetOut , size);
+      		break;
+
+	    case 17: //UDP Protocol
+      		++udp;
+      		print_udp_packet(logfile, packetOut , size);
+      		break;
+    
+    	default: //Some Other Protocol like ARP etc.
+      		others++;
+      		break;
+  	}
+  	/* TEST */
+  	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
+  	iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
+  	fprintf(logfile , "raw saddr: %.8x\n", iph->saddr);
+  	fprintf(logfile , "raw daddr: %.8x\n", iph->daddr);
+
+  	if (iph->daddr == 0x0402010a) {
+  		pcap_t* handle = pcap_open_live("eth1", BUFSIZ, 1, 100, err);
+  		int ret = pcap_inject(handle, packetOut, size);
+  		pcap_close(handle);
+  		printf("Send packet to eth1, bytes sent: %d\n", ret);
+  	}
 
 	// Modify packet
 	
