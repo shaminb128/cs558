@@ -15,6 +15,7 @@
 #include <net/if_arp.h>
 #include <sys/ioctl.h>
 #include "route.h"
+#include "packet_util.h"
 #define ETHERNET_HEADER_LEN 14
 /**
 * REFERENCE:
@@ -32,15 +33,9 @@
 
 void process_packet(u_char *, const struct pcap_pkthdr *,u_char *);
 void process_ip_packet(const u_char * , int);
-void print_ethernet_header(const u_char *, int );
-void print_ip_packet(const u_char * , int );
-void print_tcp_packet(const u_char *  , int );
-void print_udp_packet(const u_char * , int );
-void print_icmp_packet(const u_char * , int );
-void PrintData (const u_char * , int );
 void modify_packet(u_char *, char*);
-int change_ether_addr(u_char *, int);
-int updateEtherHeader(struct sockaddr *, struct sockaddr *, struct ethhdr *);
+void updateEtherHeader(struct sockaddr *, struct sockaddr *, struct ethhdr *);
+void updateIPHeader(u_char *);
 struct arpreq getMACfromIP(char *, char *);
 static char *ethernet_mactoa(struct sockaddr *);
 struct sockaddr getLocalMac(char *);
@@ -115,9 +110,16 @@ int main (int argc, char** argv) {
 void process_packet(u_char *args, const struct pcap_pkthdr *header, u_char *packet) {
 	total++;
 	int size = (int) header->len;
-	modify_packet(packet, "eth0");
-	struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
-
+    struct ethhdr *eth = (struct ethhdr *)packet;
+    struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
+	char *dev_name = (char *)malloc(20);
+	modify_packet(packet, dev_name);
+	printf("After modification\n");
+    printf("Dest MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X ", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
+    printf("Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_source[0] , eth->h_source[1] , eth->h_source[2] , eth->h_source[3] , eth->h_source[4] , eth->h_source[5] );
+	printf("Device Name : %s\n", dev_name );
+	printf(" TTL : %d ", (unsigned int)iph->ttl );
+    printf("Checksum : %d \n", ntohs(iph->check));
 }
 
 
@@ -128,21 +130,24 @@ void modify_packet(u_char *pkt_ptr, char* iface)
     struct ethhdr *eth = (struct ethhdr *)pkt_ptr;
     struct iphdr *iph = (struct iphdr*)(pkt_ptr + sizeof(struct ethhdr));
 
-    printf("Dest MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
+    printf("Dest MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X ", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
     printf("Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_source[0] , eth->h_source[1] , eth->h_source[2] , eth->h_source[3] , eth->h_source[4] , eth->h_source[5] );
+    printf(" TTL : %d ", (unsigned int)iph->ttl );
+    printf("Checksum : %d \n", ntohs(iph->check));
+
     struct sockaddr_in source;
     struct sockaddr_in dest;
+
+
     memset(&source, 0, sizeof(source));
   	source.sin_addr.s_addr = iph->saddr;
 
   	memset(&dest, 0, sizeof(dest));
   	dest.sin_addr.s_addr = iph->daddr;
 
-    //printf("Source IP: %s, Dest IP: %s\n",inet_ntoa(source.sin_addr), inet_ntoa(dest.sin_addr));
-
     rt_table *p = rt_tbl_list;
-    char dst[50], gw[50], mask[50], dev[50];
-
+    char dst[50], gw[50], mask[50];
+    int min_metric = 1000;
    // printRT(rt_tbl_list);
         while(p != NULL){
             inet_ntop(AF_INET, &(p->rt_dst.sin_addr), dst, 50);
@@ -158,60 +163,75 @@ void modify_packet(u_char *pkt_ptr, char* iface)
                 if(p->rt_gateway.sin_addr.s_addr == 0x00000000){
                     struct arpreq  arequest;
                     memset(&arequest, 0, sizeof(arequest));
-                    arequest = getMACfromIP("10.1.2.4", p->rt_dev);
-
-                    printf("Local Dest: %s\n", ethernet_mactoa(&arequest.arp_ha));
+                    arequest = getMACfromIP("10.1.2.4", p->rt_dev); //put dest.sin_addr here
+                    printf("Local Dest: %s ", ethernet_mactoa(&arequest.arp_ha));
 
                     struct sockaddr addr;
                     memset(&addr, 0, sizeof(addr));
                     addr = getLocalMac(p->rt_dev);
-
                     printf("Source: %s\n", ethernet_mactoa(&addr));
-                    updateEtherHeader(&addr, &arequest.arp_ha, eth);
+                    strcpy(iface, p->rt_dev);
 
+                    updateEtherHeader(&addr, &arequest.arp_ha, eth);
                 }
                 // It ia a remote network
                 else{
                     //set the device name and MAC address for gateway
-                   struct arpreq  arequest;
-                   memset(&arequest, 0, sizeof(arequest));
-                   arequest = getMACfromIP(gw, p->rt_dev);
-                   char *gwAddr = ethernet_mactoa(&arequest.arp_ha);
-                   printf("Remote Dest: %s\n", gwAddr);
+                   if(p->rt_metric < min_metric)
+                   {
+                        min_metric = p->rt_metric;
+                        //printf("Metric : %d, Min M: %d\n" ,p->rt_metric, min_metric);
+                        struct arpreq  arequest;
+                        memset(&arequest, 0, sizeof(arequest));
+                        arequest = getMACfromIP(gw, p->rt_dev);
+                        char *gwAddr = ethernet_mactoa(&arequest.arp_ha);
+                        printf("Remote Dest: %s ", gwAddr);
 
-                   struct sockaddr addr;
-                   memset(&addr, 0, sizeof(addr));
-                   addr = getLocalMac(p->rt_dev);
-                   char *sourceAddr = ethernet_mactoa(&addr);
-                   printf("Source: %s\n", sourceAddr);
-
-                   updateEtherHeader(&addr, &arequest.arp_ha, eth);
+                        struct sockaddr addr;
+                        memset(&addr, 0, sizeof(addr));
+                        addr = getLocalMac(p->rt_dev);
+                        char *sourceAddr = ethernet_mactoa(&addr);
+                        printf("Source: %s\n", sourceAddr);
+                        strcpy(iface, p->rt_dev);
+                        updateEtherHeader(&addr, &arequest.arp_ha, eth);
+                   }
                 }
+                updateIPHeader(pkt_ptr);
               }
-
         p = p->next;
   }
-    printf("After modification\n");
-    printf("Dest MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
-    printf("Source MAC: %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_source[0] , eth->h_source[1] , eth->h_source[2] , eth->h_source[3] , eth->h_source[4] , eth->h_source[5] );
-
-    return 1;
-
 }
 
 
-
 // update Ethernet address with new MAC
-int updateEtherHeader(struct sockaddr *sourceAddr, struct sockaddr *gwAddr, struct ethhdr *eth){
+void updateEtherHeader(struct sockaddr *sourceAddr, struct sockaddr *destAddr, struct ethhdr *eth){
 
     unsigned char *ptrS = (unsigned char *) sourceAddr->sa_data;
-    unsigned char *ptrD = (unsigned char *) gwAddr->sa_data;
+    unsigned char *ptrD = (unsigned char *) destAddr->sa_data;
     int i;
     for (i = 0; i < 6 ; i++){
 
         eth->h_dest[i] = ptrD[i];
         eth->h_source[i] = ptrS[i];
     }
+}
+
+void updateIPHeader(u_char *pkt){
+
+    struct iphdr *iph = (struct iphdr*)(pkt + sizeof(struct ethhdr));
+    if(iph->ttl > 1){
+        iph->ttl = iph->ttl - 1;
+    }
+    else if(iph->ttl == 1){
+        iph->ttl = iph->ttl - 1;
+        //TODO: send ICMP packet
+    }
+    else {
+        //TODO: sned ICMP packet
+    }
+    u_short checksum = calc_icmp_checksum(pkt, 0);
+    iph->check = (u_int16_t) checksum;
+
 }
 
 static char *ethernet_mactoa(struct sockaddr *addr)

@@ -13,18 +13,18 @@
 
 
 
-static char *ethernet_mactoa(struct sockaddr *addr)
-{
-	static char buff[256];
-	unsigned char *ptr = (unsigned char *) addr->sa_data;
-
-	sprintf(buff, "%02X:%02X:%02X:%02X:%02X:%02X",
-		(ptr[0] & 0377), (ptr[1] & 0377), (ptr[2] & 0377),
-		(ptr[3] & 0377), (ptr[4] & 0377), (ptr[5] & 0377));
-
-return (buff);
-
-}
+//static char *ethernet_mactoa(struct sockaddr *addr)
+//{
+//	static char buff[256];
+//	unsigned char *ptr = (unsigned char *) addr->sa_data;
+//
+//	sprintf(buff, "%02X:%02X:%02X:%02X:%02X:%02X",
+//		(ptr[0] & 0377), (ptr[1] & 0377), (ptr[2] & 0377),
+//		(ptr[3] & 0377), (ptr[4] & 0377), (ptr[5] & 0377));
+//
+//return (buff);
+//
+//}
 
 
 struct arpreq getMACfromIP(char *ip, char *iface){
@@ -34,7 +34,7 @@ struct arpreq getMACfromIP(char *ip, char *iface){
 	struct sockaddr_in *sin;
 	struct in_addr      ipaddr;
 
-    printf("%s, %s \n", ip, iface);
+ //   printf("%s, %s \n", ip, iface);
 	/* Get an internet domain socket. */
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		perror("socket");
