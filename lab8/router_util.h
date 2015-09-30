@@ -29,11 +29,37 @@ typedef enum {
 	P_REMOTE
 } pf_t;
 
+/**
+ * This function takes Device name of the interface and
+ * returns the corresponding MAC address for that
+ * interface
+ */
 struct sockaddr getLocalMac(char *);
+
+/**
+ * This function takes the IP address of remote host and device name of
+ * the interface to which the remote is connected. It returns the
+ * corresponding MAC address of the remote host from ARP table
+ */
 struct arpreq getMACfromIP(char *, char *);
+
+/**
+ * This function takes the entire packet and
+ * updates the IP Header fields
+ */
 void updateIPHeader(u_char *);
+
+/**
+ * This function takes the Ethernet header and updates the corresponding
+ * source and destination MAC address
+ */
 void updateEtherHeader(struct sockaddr *, struct sockaddr *, struct ethhdr *);
+
+/**
+ * This function is not used anymore
+ */
 void modify_packet(u_char *, char*);
+
 
 int getIPfromIface(char*, char*);
 /**
