@@ -3,13 +3,19 @@
 #include <stdlib.h> // for exit()
 #include <string.h> //for memset
 
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h> // for inet_ntoa()
 #include <net/ethernet.h>
+#include <net/if.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
+#include <netinet/in.h>
+#include <netdb.h> //hostent
+
 
 /**
 * REFERENCE:
@@ -55,6 +61,7 @@ int main (int argc, char** argv) {
 	char err[128];						// Holds the error
 	char *device_name = NULL;
 	char devices[10][64];				// For holding all available devices
+  char ip[50];
 
 	int count = 0;
 	int n = 0;
@@ -70,14 +77,13 @@ int main (int argc, char** argv) {
 	printf("Here are the available devices:\n");
 	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
 		printf("%d. %s\t-\t%s\n", count, device_ptr->name, device_ptr->description);
-		struct pcap_addr* addrptr = device_ptr->addresses;
-		while (addrptr) {
-			printf("\t|-addr: %s\n", addrptr->addr->sa_data);
-			addrptr = addrptr->next;
-		}
 		if (device_ptr->name != NULL) {
 			strcpy(devices[count], device_ptr->name);
 		}
+    if ((ret = hostname_to_ip(devices[count], ip)) != 0) {
+      fprintf(stderr, "ERROR searching ip for device %s\n", devices[count]);
+    }
+    printf("\t|-address: %s\n", ip);
 		count++;
 	}
 
@@ -129,6 +135,24 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
       		break;
   	}
   	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
+}
+
+int hostname_to_ip(char * hostname , char* ip) {
+  int fd;
+  struct ifreq ifr;
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+  /* I want to get an IPv4 IP address */
+  ifr.ifr_addr.sa_family = AF_INET;
+
+  /* I want IP address attached to "eth0" */
+  strcpy(ifr.ifr_name, hostname);
+  ioctl(fd, SIOCGIFADDR, &ifr);
+  close(fd);
+
+  /* display result */
+  printf("%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+  strcpy(ip, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+  return 0;
 }
 
 void print_ethernet_header(const u_char *Buffer, int Size)

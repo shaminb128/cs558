@@ -5,18 +5,23 @@
 #include <stdio.h>
 #include <stdlib.h> // for exit()
 #include <string.h> //for memset
+#include <unistd.h>
 
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h> // for inet_ntoa()
 #include <net/ethernet.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/udp.h>
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 #include <netinet/in.h>
 #include <linux/sockios.h>
-#include <net/if_arp.h>
-#include <sys/ioctl.h>
+
+
 
 #include "route.h"
 #include "router_util.h"
@@ -179,6 +184,24 @@ void modify_packet(u_char *pkt_ptr, char* iface)
               }
         p = p->next;
   }
+}
+
+
+int getIPfromIface(char* iface, char* ipstr) {
+  int fd;
+  struct ifreq ifr;
+  fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  /* I want to get an IPv4 IP address */
+  ifr.ifr_addr.sa_family = AF_INET;
+
+  /* I want IP address attached to iface */
+  strcpy(ifr.ifr_name, iface);
+  ioctl(fd, SIOCGIFADDR, &ifr);
+  close(fd);
+
+  strcpy(ipstr, inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+  return 0;
 }
 
 int routing_opt(const u_char* packetIn, char* myIpAddr) {

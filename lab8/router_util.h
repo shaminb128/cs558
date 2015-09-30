@@ -35,6 +35,7 @@ void updateIPHeader(u_char *);
 void updateEtherHeader(struct sockaddr *, struct sockaddr *, struct ethhdr *);
 void modify_packet(u_char *, char*);
 
+int getIPfromIface(char*, char*);
 /**
  * This function takes in a raw packet and ip addr of this interface
  * and desides what we want to do with it

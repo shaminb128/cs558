@@ -23,6 +23,7 @@ int others = 0;
 int total = 0;
 
 void print_packet_handler(FILE* logfile, const u_char *Buffer, int size) {
+	total++;
 	struct iphdr *iph = (struct iphdr*)(Buffer + sizeof(struct ethhdr));
 	switch (iph->protocol) {
     	case 1:  //ICMP Protocol

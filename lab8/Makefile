@@ -1,5 +1,5 @@
 router: router.o packet_util.o router_util.o route.o
-	gcc -g -Wall -o router router.o packet_util.o router_util.o route.o -lpcap 
+	gcc -g -Wall -o router router.o packet_util.o router_util.o route.o -lpcap -pthread
 pcaptest: pcaptest.o
 	gcc -g -Wall -o pcaptest pcaptest.o -lpcap
 route_lib: route_lib.o route.o arp.o packet_util.o

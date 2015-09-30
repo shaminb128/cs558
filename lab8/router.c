@@ -11,33 +11,36 @@
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
 
+#include <pthread.h>
+
 #include "route.h"
 #include "packet_util.h"
 #include "router_util.h"
 
-FILE* logfile;
 
+typedef struct sniff {
+	char dev_name[50];
+	char dev_ip[20];
+	FILE* logfile;
+
+}sniff_t;
 
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
+void sniffer(void*);
 
 int main (int argc, char** argv) {
 	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
 	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
-	pcap_t *pcap_handle = NULL;
 
 	char err[128];						// Holds the error
 	char devices[5][16];				// For holding all available devices
 
 	int count = 0;
 	int n = 0;
+	int i = 0;
 	int ret = 0;						// Return val
 
 	ret = createRT();
-
-	if ( (logfile = fopen("packets.log", "w")) == NULL) {
-		fprintf(stderr, "Error opening packets.log\n");
-		exit(1);
-	}
 
 	/* Scan devices */
 	printf("Scanning available devices ... ");
@@ -48,31 +51,73 @@ int main (int argc, char** argv) {
 	printf("DONE\n");
 
 	/* Record devices starting with only "eth" */
-	printf("Here is a list of ethernet devices we try to listen:\n");
 	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
 		if (device_ptr->name != NULL && !strncmp(device_ptr->name, "eth", 3)){
-			printf("%d. %s\t-\t%s\n", count, device_ptr->name, device_ptr->description);
 			strcpy(devices[count], device_ptr->name);
 			count++;
 		}
 	}
 
-	printf("enter device number:\n");
-    scanf("%d", &n);
 
-	printf("Trying to open device %s to sniff ... ", devices[n]);
-	if ( (pcap_handle = pcap_open_live(devices[n], BUFSIZ, 1, 100, err)) == NULL ) {
-		fprintf(stderr, "Error opening device %s, with error message %s\n", devices[n], err);
-		exit(1);
+	struct sniff* sniff_args = (struct sniff*)malloc( sizeof(struct sniff*) * count);
+	printf("Here is a list of ethernet devices we try to listen:\n");
+	for (; i < count; i++) {
+		strcpy(sniff_args[i].dev_name, devices[i]);
+		if ((ret = getIPfromIface(sniff_args[i].dev_name, sniff_args[i].dev_ip)) != 0) {
+			fprintf(stderr, "ERROR getting IP from Iface for device %s\n", sniff_args[i].dev_name);
+		}
+		printf("%d. %s\t-\t%s\n", i, sniff_args[i].dev_name, sniff_args[i].dev_ip);
 	}
+
+	pthread_t* threads = (pthread_t*)malloc( sizeof(pthread_t) * count );
+
+	for (i = 0; i < count; i++) {
+		if (pthread_create(&(threads[i]), NULL, (void*(*)(void *))sniffer, (void *)(&sniff_args[i]) )) {
+        	fprintf(stderr, "ERROR creating thread %d\n", i);
+    	}
+	}
+
+	for (i = 0; i < count; i++) {
+		if (pthread_join(threads[i], NULL)){
+        	fprintf(stderr, "ERROR joining thread %d\n", i);
+    	}
+	}
+
+
 	printf( "DONE\n");
 
-	pcap_loop(pcap_handle , 40 , process_packet , NULL);	// -1 means an infinite loop
-	fclose(logfile);
 	return 0;
 }
 
+void sniffer(void* param) {
+	struct sniff* data = (struct sniff*)param;
+	if (strncmp(data->dev_ip, "192", 3) == 0) {
+		printf("dev_ip: %s, comp result: %d\n", data->dev_ip, strncmp(data->dev_ip, "192", 3));
+		return;
+	}
+	char filename[20];
+	char err[128];
+	pcap_t *pcap_handle = NULL;
+
+	printf("preparing sniffing device %s, ip %s\n", data->dev_name, data->dev_ip);
+	sprintf(filename, "%s.log", data->dev_name);
+	if ( (data->logfile = fopen("packets.log", "w")) == NULL) {
+		fprintf(stderr, "Error opening packets.log\n");
+		exit(1);
+	}
+
+	if ( (pcap_handle = pcap_open_live(data->dev_name, BUFSIZ, 1, 100, err)) == NULL ) {
+		fprintf(stderr, "Error opening device %s, with error message %s\n", data->dev_name, err);
+		exit(1);
+	}
+
+	pcap_loop(pcap_handle , 5 , process_packet , (u_char*)data );	// -1 means an infinite loop
+
+}
+
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+	struct sniff* data= (struct sniff*)args;
+	FILE* logfile = data->logfile;
 	char err[128];
 	int size = (int) header->len;
 	char iface[10];
@@ -81,24 +126,26 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int ret = 0;
 	int packetOutLen = 0;
 
-	printf("Received a packet, size = %d\n", size);
+	//printf("Received a packet, size = %d\n", size);
 	memcpy(packetOut, packet, size);
-	print_packet_handler(stdout, packetOut, size);
+	//print_packet_handler(stdout, packetOut, size);
 
-	ret = routing_opt(packet, "10.10.1.2");
-	printf("routing_opt = %d\n", ret);
+	ret = routing_opt(packet, data->dev_ip);
+	//printf("routing_opt = %d\n", ret);
 	switch(ret) {
 		case P_FORWARD:
 			printf("Ready to modify the packet for forwarding...\n");
 			if ( (packetOutLen = modify_packet_new(packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "fail to modify packet, with ret %d\n", ret);
 			}
-			printf("\nPACKET MODIFIED: size: %d, This packet is going to be sent to %s\nHere are the details:\n", packetOutLen, iface);
+			// printf("\nPACKET MODIFIED: size: %d, This packet is going to be sent to %s\nHere are the details:\n", packetOutLen, iface);
 			print_packet_handler(logfile, packetOut, packetOutLen);
 			break;
 		case P_TIMEOUT:
+			printf("This is a timeout packet\n");
 			break;
 		case P_ICMPECHOREPLY:
+			printf("This packet needs icmp echo reply\n");
 			break;
 		default:
 			break;
