@@ -72,7 +72,7 @@ int getIPfromIface(char*, char*);
  * 		2.1 TTL = 1 -> return P_TIMEOUT
  * 		2.2 TTL != 1 -> return P_FORWARD
  */
-int routing_opt(const u_char*, char*);
+int routing_opt(const u_char*, char*, char*);
 
 /**
  * This function is a response to P_FORWARD, returned by routing_opt()

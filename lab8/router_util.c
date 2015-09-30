@@ -204,7 +204,7 @@ int getIPfromIface(char* iface, char* ipstr) {
   return 0;
 }
 
-int routing_opt(const u_char* packetIn, char* myIpAddr) {
+int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
 	struct iphdr* iph= (struct iphdr*)(packetIn + sizeof(struct ethhdr));
 	int iphlen = iph->ihl * 4;
 	struct sockaddr_in dest;
@@ -265,39 +265,39 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
 //	if (p == NULL) {
 //		printf("p is NULL after looking up\n");
 //	}
-  	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
+//  	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
 
   	// Now we have the routing table entry and is ready to modify packet
-	printf("original ttl: %d\n", iph->ttl);
+//	printf("original ttl: %d\n", iph->ttl);
   	(iph->ttl)--;
-  	printf("ttl is now %d\n", iph->ttl);
+//  	printf("ttl is now %d\n", iph->ttl);
 
   	if (ret == P_LOCAL) {
         arequest = getMACfromIP(inet_ntoa(dest.sin_addr), p.rt_dev);
-        printf("modify_packet_new: getMACfromIP passed\n");
+//        printf("modify_packet_new: getMACfromIP passed\n");
         addr = getLocalMac(p.rt_dev);
-        printf("modify_packet_new: getLocalMac passed, devname = %s\n", p.rt_dev);
+//        printf("modify_packet_new: getLocalMac passed, devname = %s\n", p.rt_dev);
         strcpy(iface, p.rt_dev);
-        printf("modify_packet_new: strcpy passed.\n");
+//        printf("modify_packet_new: strcpy passed.\n");
         updateEtherHeader(&addr, &arequest.arp_ha, eth);
-        printf("modify_packet_new: updateEtherHeader passed\n");
+//        printf("modify_packet_new: updateEtherHeader passed\n");
   	} else if (ret == P_REMOTE) {
         inet_ntop(AF_INET, &(p.rt_gateway.sin_addr), gw, 50);
         arequest = getMACfromIP(gw, p.rt_dev);
-        printf("modify_packet_new: getMACfromIP passed\n");
+//        printf("modify_packet_new: getMACfromIP passed\n");
 		addr = getLocalMac(p.rt_dev);
-		printf("modify_packet_new: getLocalMac passed, devname = %s\n", p.rt_dev);
+//		printf("modify_packet_new: getLocalMac passed, devname = %s\n", p.rt_dev);
 		strcpy(iface, p.rt_dev);
-		printf("modify_packet_new: strcpy passed.\n");
+//		printf("modify_packet_new: strcpy passed.\n");
         updateEtherHeader(&addr, &arequest.arp_ha, eth);
-        printf("modify_packet_new: updateEtherHeader passed\n");
+ //       printf("modify_packet_new: updateEtherHeader passed\n");
   	} else {
   		return -1; // not supposed to come to this point
   	}
 
   	// Finally recalculate checksum
   	u_short ipchk = calc_ip_checksum(packetIn);
-  	printf("modify_packet_new: calc_ip_checksum passed. ipchk = %d\n", ipchk);
+//  	printf("modify_packet_new: calc_ip_checksum passed. ipchk = %d\n", ipchk);
   	iph->check = htons(ipchk);
 	return size;
 }
@@ -310,7 +310,7 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 	int min_metric = 1000;
 
 	while(p != NULL) {
-		printf("iterating routingn table ...\n");
+//		printf("iterating routingn table ...\n");
 		if ((strlen(p->rt_dev) != 0) &&
 			((dest.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr) == ( p->rt_dst.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr))) {
 			// Matches
