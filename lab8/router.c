@@ -16,11 +16,7 @@
 #include "router_util.h"
 
 FILE* logfile;
-int tcp = 0;
-int udp = 0;
-int icmp = 0;
-int others = 0;
-int total = 0;
+
 
 void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 
@@ -89,36 +85,31 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int size = (int) header->len;
 	char iface[10];
 	u_char packetOut[ETH_DATA_LEN];
+	memset(packetOut, 0, ETH_DATA_LEN);
+	int ret = 0;
 
 	memcpy(packetOut, packet, size);
-	modify_packet(packetOut, iface);
+	
+	ret = routing_opt(packet, "10.10.1.2");
+	switch(ret) {
+		case P_FORWARD:
+			if ( (ret = modify_packet_new(packetOut, iface, size)) <= 0 ) {
+				fprintf(stderr, "fail to modify packet, with ret %d\n", ret);
+			}
+			break;
+		case P_TIMEOUT:
+			break;
+		case P_ICMPECHOREPLY:
+			break;
+		default:
+			break;
+	}
+/* TEST PRINT */
+	fprintf(logfile , "\nPACKET MODIFIED: This packet is going to be sent to %s\nHere are the details:\n", iface);
+	print_packet_handler(logfile, packetOut, ret);
 
-	fprintf(logfile , "\nThis file is going to be sent to %s\n", iface);
-
-	struct iphdr *iph = (struct iphdr*)(packetOut + sizeof(struct ethhdr));
-	switch (iph->protocol) {
-    	case 1:  //ICMP Protocol
-      		++icmp;
-      		print_icmp_packet(logfile, packetOut , size);
-      		break;
-    
-    	case 6:  //TCP Protocol
-      		++tcp;
-     	 	print_tcp_packet(logfile, packetOut , size);
-      		break;
-
-	    case 17: //UDP Protocol
-      		++udp;
-      		print_udp_packet(logfile, packetOut , size);
-      		break;
-    
-    	default: //Some Other Protocol like ARP etc.
-      		others++;
-      		break;
-  	}
-  	/* TEST */
-  	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
-  	iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
+	
+/*  	iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
   	fprintf(logfile , "raw saddr: %.8x\n", iph->saddr);
   	fprintf(logfile , "raw daddr: %.8x\n", iph->daddr);
 
@@ -128,7 +119,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
   		pcap_close(handle);
   		printf("Send packet to eth1, bytes sent: %d\n", ret);
   	}
-
+*/
 	// Modify packet
 	
 	// Look for interface name char*

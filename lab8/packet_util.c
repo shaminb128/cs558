@@ -16,6 +16,32 @@
 
 #include "packet_util.h"
 
+
+void print_packet_handler(FILE* logfile, const u_char *Buffer, int Size) {
+	struct iphdr *iph = (struct iphdr*)(Buffer + sizeof(struct ethhdr));
+	switch (iph->protocol) {
+    	case 1:  //ICMP Protocol
+      		++icmp;
+      		print_icmp_packet(logfile, Buffer , size);
+      		break;
+    
+    	case 6:  //TCP Protocol
+      		++tcp;
+     	 	print_tcp_packet(logfile, Buffer , size);
+      		break;
+
+	    case 17: //UDP Protocol
+      		++udp;
+      		print_udp_packet(logfile, Buffer , size);
+      		break;
+    
+    	default: //Some Other Protocol like ARP etc.
+      		others++;
+      		break;
+  	}
+  	/* TEST */
+  	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
+}
 void print_ethernet_header(FILE* logfile, const u_char *Buffer, int Size)
 {
 	// adapted from <linux/if_ether.h>

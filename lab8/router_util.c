@@ -182,18 +182,111 @@ void modify_packet(u_char *pkt_ptr, char* iface)
 }
 
 int routing_opt(u_char* packetIn, char* myIpAddr) {
-	/* NOT_YET_IMPLEMENTED */
+	struct iphdr* iph= (struct iphdr*)(packetIn + sizeof(struct ethhdr));
+	int iphlen = iph->ihl * 4;
+	struct sockaddr_in dest;
+	memset(&dest, 0, sizeof(dest));
+	int ret = 0;
+  	if( (ret = inet_aton(myIpAddr, dest.sin_addr)) == 0) {
+  		return P_NOT_YET_IMPLEMENTED;
+  	}
+  	if (dest.sin_addr.s_addr == (unsigned long)iph->daddr) {
+  		// This packet targets at this node
+  		struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
+  		if (icmph->type == ICMP_ECHO) {
+  			return P_ICMPECHOREPLY;
+  		} else {
+  			return P_NOT_YET_IMPLEMENTED;
+  		}
+  	} else {
+  		// This packet targets at some other node
+  		if (iph->ttl <= 1) {
+  			return P_TIMEOUT;
+  		} else {
+  			return P_FORWARD;
+  		}
+  	}
 	return P_NOT_YET_IMPLEMENTED;
 }
 
-int modify_packet_new(u_char* packetIn, char* iface) {
-	/* NOT_YET_IMPLEMENTED */
-	return 0;
+int modify_packet_new(u_char* packetIn, char* iface, int size) {
+	struct ethhdr *eth = (struct ethhdr *)pkt_ptr;
+    struct iphdr *iph = (struct iphdr*)(pkt_ptr + sizeof(struct ethhdr));
+    struct sockaddr_in source;
+    struct sockaddr_in dest;
+    struct arpreq  arequest;
+    struct sockaddr addr;
+    char gw[50];
+    rt_table* p = NULL;
+    int ret = 0;
+
+
+    memset(&source, 0, sizeof(source));
+  	source.sin_addr.s_addr = iph->saddr;
+
+  	memset(&dest, 0, sizeof(dest));
+  	dest.sin_addr.s_addr = iph->daddr;
+
+  	memset(&arequest, 0, sizeof(arequest));
+
+  	memset(&addr, 0, sizeof(addr));
+
+  	if ((ret = rt_lookup(iph, p)) != 0) {
+  		return -1; // destination unreachable
+  	}
+
+  	// Now we have the routing table entry and is ready to modify packet
+  	(iph->ttl)--;
+  	if (ret == P_LOCAL) {
+        arequest = getMACfromIP(inet_ntoa(dest.sin_addr), p->rt_dev);
+        addr = getLocalMac(p->rt_dev);
+        strcpy(iface, p->rt_dev);
+        updateEtherHeader(&addr, &arequest.arp_ha, eth);
+  	} else if (ret == P_REMOTE) {
+        inet_ntop(AF_INET, &(p->rt_gateway.sin_addr), gw, 50);
+        arequest = getMACfromIP(gw, p->rt_dev);
+		addr = getLocalMac(p->rt_dev);
+		strcpy(iface, p->rt_dev);
+        updateEtherHeader(&addr, &arequest.arp_ha, eth);
+  	} else {
+  		return -1; // not supposed to come to this point
+  	}
+
+  	// Finally recalculate checksum
+  	u_short ipchk = calc_ip_checksum(packetIn);
+  	iph->check = ipchk;
+	return size;
 }
 
 int rt_lookup(struct iphdr* iph, rt_table* rtp) {
-	/* NOT_YET_IMPLEMENTED */
-	return 0;
+	rt_table* p = rt_tbl_list;
+	struct sockaddr_in dest;
+	memset(&dest, 0, sizeof(dest));
+  	dest.sin_addr.s_addr = iph->daddr;
+	int min_metric = 1000;
+
+	while(p) {
+		if ((strlen(p->rt_dev) != 0) &&
+			((dest.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr) == ( p->rt_dst.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr))) {
+			// Matches
+			if(p->rt_gateway.sin_addr.s_addr == 0x00000000) {
+				// Local network
+				rtp = p;
+				return P_LOCAL;
+			} else {
+				// remote network
+				if(p->rt_metric < min_metric) {
+					min_metric = p->rt_metric;
+					rtp = p;
+				}
+			}
+		}
+	}
+
+	if (!rtp) {
+		return -1;
+	}
+	return P_REMOTE;
 }
 
 int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size) {

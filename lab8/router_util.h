@@ -18,9 +18,15 @@ typedef enum {
 	// Routing options
 	P_FORWARD,				/* Forward the packet to next hop */
 	P_TIMEOUT,				/* Drop the packet and generate ICMP timeout reply */
-	P_ICMPREPLY,			/* Response to ICMP echo request */
+	P_ICMPECHOREPLY,		/* Response to ICMP echo request */
 	P_NOT_YET_IMPLEMENTED	/* Used only for not-yet-implemented functions */
 } r_op;
+
+typedef enum {
+	// Packet forward type
+	P_LOCAL,
+	P_REMOTE
+} pf_t;
 
 struct sockaddr getLocalMac(char *);
 struct arpreq getMACfromIP(char *, char *);
@@ -46,7 +52,7 @@ int routing_opt(u_char*, char*);
  * the packet and device name (second argument), and returns the size of
  * packet
  */
-int modify_packet_new(u_char*, char*);
+int modify_packet_new(u_char*, char*, int);
 
 /**
  * This function takes in a iphdr and find the routing table entry we are
