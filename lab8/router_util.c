@@ -275,7 +275,7 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
   	// Finally recalculate checksum
   	u_short ipchk = calc_ip_checksum(packetIn);
   	printf("modify_packet_new: calc_ip_checksum passed. ipchk = %d\n", ipchk);
-  	iph->check = ipchk;
+  	iph->check = htons(ipchk);
 	return size;
 }
 
