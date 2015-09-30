@@ -16,8 +16,13 @@
 
 #include "packet_util.h"
 
+int tcp = 0;
+int udp = 0;
+int icmp = 0;
+int others = 0;
+int total = 0;
 
-void print_packet_handler(FILE* logfile, const u_char *Buffer, int Size) {
+void print_packet_handler(FILE* logfile, const u_char *Buffer, int size) {
 	struct iphdr *iph = (struct iphdr*)(Buffer + sizeof(struct ethhdr));
 	switch (iph->protocol) {
     	case 1:  //ICMP Protocol

@@ -80,22 +80,28 @@ int main (int argc, char** argv) {
 }
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
-	total++;
 	char err[128];
 	int size = (int) header->len;
 	char iface[10];
 	u_char packetOut[ETH_DATA_LEN];
 	memset(packetOut, 0, ETH_DATA_LEN);
 	int ret = 0;
+	int packetOutLen = 0;
 
+	printf("Received a packet, size = %d\n", size);
 	memcpy(packetOut, packet, size);
+	print_packet_handler(stdout, packetOut, size);
 	
 	ret = routing_opt(packet, "10.10.1.2");
+	printf("routing_opt = %d\n", ret);
 	switch(ret) {
 		case P_FORWARD:
-			if ( (ret = modify_packet_new(packetOut, iface, size)) <= 0 ) {
+			printf("Ready to modify the packet for forwarding...\n");
+			if ( (packetOutLen = modify_packet_new(packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "fail to modify packet, with ret %d\n", ret);
 			}
+			printf("\nPACKET MODIFIED: size: %d, This packet is going to be sent to %s\nHere are the details:\n", packetOutLen, iface);
+			print_packet_handler(logfile, packetOut, packetOutLen);
 			break;
 		case P_TIMEOUT:
 			break;
@@ -105,8 +111,6 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			break;
 	}
 /* TEST PRINT */
-	fprintf(logfile , "\nPACKET MODIFIED: This packet is going to be sent to %s\nHere are the details:\n", iface);
-	print_packet_handler(logfile, packetOut, ret);
 
 	
 /*  	iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );

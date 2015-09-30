@@ -18,11 +18,6 @@
 struct sockaddr_in source;
 struct sockaddr_in dest;
 
-int tcp = 0;
-int udp = 0;
-int icmp = 0;
-int others = 0;
-int total = 0;
 
 void print_packet_handler(FILE*, const u_char*, int);
 void print_ethernet_header(FILE*, const u_char *, int);

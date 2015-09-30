@@ -16,6 +16,7 @@
 
 typedef enum {
 	// Routing options
+	P_DO_NOTHING			/* this interface sent the packet, do nothing */
 	P_FORWARD,				/* Forward the packet to next hop */
 	P_TIMEOUT,				/* Drop the packet and generate ICMP timeout reply */
 	P_ICMPECHOREPLY,		/* Response to ICMP echo request */
@@ -44,7 +45,7 @@ void modify_packet(u_char *, char*);
  * 		2.1 TTL = 1 -> return P_TIMEOUT
  * 		2.2 TTL != 1 -> return P_FORWARD 
  */
-int routing_opt(u_char*, char*);
+int routing_opt(const u_char*, char*);
 
 /**
  * This function is a response to P_FORWARD, returned by routing_opt()

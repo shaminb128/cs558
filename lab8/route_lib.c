@@ -43,11 +43,7 @@ struct sockaddr getLocalMac(char *);
 FILE* logfile;
 struct sockaddr_in source;
 struct sockaddr_in dest;
-int tcp = 0;
-int udp = 0;
-int icmp = 0;
-int others = 0;
-int total = 0;
+
 rt_table *rt_tbl_list;
 
 int main (int argc, char** argv) {
