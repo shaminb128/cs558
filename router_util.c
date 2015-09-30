@@ -190,11 +190,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr) {
   	if( (ret = inet_aton(myIpAddr, &(dest.sin_addr))) == 0) {
   		return P_NOT_YET_IMPLEMENTED;
   	}
-  	if (ntohs(iph->saddr) == dest.sin_addr.s_addr) {
-  		return P_DO_NOTHING;
-  	}
-
-  	if (dest.sin_addr.s_addr == ntohs(iph->daddr)) {
+  	if (dest.sin_addr.s_addr == (unsigned long)iph->daddr) {
   		// This packet targets at this node
   		struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
   		if (icmph->type == ICMP_ECHO) {
@@ -291,14 +287,18 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 		if ((strlen(p->rt_dev) != 0) &&
 			((dest.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr) == ( p->rt_dst.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr))) {
 			// Matches
+printf("rt_lookup: found a match\n");
 			if(p->rt_gateway.sin_addr.s_addr == 0x00000000) {
+printf("rt_lookup: target at local network\n");
 				// Local network
 				//rtp = p;
 				memcpy(rtp, p, sizeof(rt_table));
 				return P_LOCAL;
 			} else {
+printf("rt_lookup: target at remote network\n");
 				// remote network
 				if(p->rt_metric < min_metric) {
+printf("rt_lookup: update remote network next hop\n");
 					min_metric = p->rt_metric;
 					//rtp = p;
 					memcpy(rtp, p, sizeof(rt_table));

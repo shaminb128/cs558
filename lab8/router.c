@@ -26,7 +26,6 @@ int main (int argc, char** argv) {
 	pcap_t *pcap_handle = NULL;
 
 	char err[128];						// Holds the error
-	char *device_name = NULL;
 	char devices[5][16];				// For holding all available devices
 
 	int count = 0;
@@ -69,12 +68,6 @@ int main (int argc, char** argv) {
 	printf( "DONE\n");
 
 	pcap_loop(pcap_handle , 40 , process_packet , NULL);	// -1 means an infinite loop
-
-
-
-
-
-
 	fclose(logfile);
 	return 0;
 }
@@ -91,7 +84,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	printf("Received a packet, size = %d\n", size);
 	memcpy(packetOut, packet, size);
 	print_packet_handler(stdout, packetOut, size);
-	
+
 	ret = routing_opt(packet, "10.10.1.2");
 	printf("routing_opt = %d\n", ret);
 	switch(ret) {
@@ -112,7 +105,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	}
 /* TEST PRINT */
 
-	
+
 /*  	iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
   	fprintf(logfile , "raw saddr: %.8x\n", iph->saddr);
   	fprintf(logfile , "raw daddr: %.8x\n", iph->daddr);
@@ -125,7 +118,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
   	}
 */
 	// Modify packet
-	
+
 	// Look for interface name char*
 	// pcap_t* handle = pcap_open_live(char*, BUFSIZE, 1, 100, err)
 	// pcap_inject(handle, packet, size);

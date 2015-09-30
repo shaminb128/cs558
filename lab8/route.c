@@ -48,8 +48,7 @@ int createRT()
 
 int printRT(rt_table *rt_list)
 {
-    short int metric;
-    char dest[50], gw[50], mask[50], dev[50];
+    char dest[50], gw[50], mask[50];
     rt_table *pointer;
 
     pointer = rt_list;
