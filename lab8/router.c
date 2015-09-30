@@ -140,7 +140,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	memcpy(packetOut, packet, size);
 	//print_packet_handler(stdout, packetOut, size);
 
-	ret = routing_opt(packet, data->dev_ip);
+	ret = routing_opt(packet, data->dev_ip, data->dev_name);
 	//printf("routing_opt = %d\n", ret);
 	switch(ret) {
 		case P_FORWARD:
