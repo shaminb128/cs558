@@ -342,7 +342,7 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 	return P_REMOTE;
 }
 
-int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size) {
+int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* interface, int size) {
 	packetOut = malloc(size);
 	memset(packetOut,0,size);
 	memcpy(packetOut,packetIn,size);
@@ -352,7 +352,7 @@ int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* i
 	return size;
 }
 
-int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int Size) {
+int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int size) {
 	struct iphdr *iph = (struct iphdr *)(packetIn  + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;	
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
