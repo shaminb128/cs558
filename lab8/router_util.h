@@ -108,7 +108,15 @@ int rt_lookup(struct iphdr*, rt_table* );
  */
 int generate_icmp_time_exceed_packet(u_char*, u_char*, char*, int);
 int generate_icmp_echo_reply_packet(u_char*, u_char*, char*, int);
-
+/**
+Following are the supporting functions for icmp generate
+*/
+void eth_pkt_hdr(u_char *packet);
+void ip_pkt_hdr(u_char *packetOut);
+void icmp_pkt_hdr(u_char *packetOut, int size);
+int update_size_icmp_pkt(u_char *packetIn, int packet_size);
+void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface);
+void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size);
 
 
 #endif
