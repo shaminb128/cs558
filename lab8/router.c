@@ -136,9 +136,12 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	//printf("Received a packet, size = %d\n", size);
 	memcpy(packetOut, packet, size);
 	//print_packet_handler(stdout, packetOut, size);
-
+    struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
+    if (iph->protocol != 1 && iph->protocol != 6 && iph->protocol != 17) {
+	    return;
+    }
 	ret = routing_opt(packet, data->dev_ip, data->dev_name);
-	//printf("routing_opt = %d\n", ret);
+	printf("routing_opt = %d\n", ret);
 	switch(ret) {
 		case P_FORWARD:
 			fprintf(stdout, "thread %s: Ready to modify the packet for forwarding...\n", data->dev_name);
@@ -181,7 +184,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 				pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
-
+			}
 			break;
 		case P_ICMPECHOREPLY:
 			fprintf(stdout, "thread %s: This packet needs icmp echo reply\n", data->dev_name);
@@ -202,7 +205,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 				pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
-
+			}
 			break;
 		default:
 			break;

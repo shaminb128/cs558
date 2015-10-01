@@ -29,6 +29,7 @@ typedef enum {
 	P_REMOTE
 } pf_t;
 
+int cmp_mac_addr(unsigned char *,unsigned char *);
 /**
  * This function takes Device name of the interface and
  * returns the corresponding MAC address for that

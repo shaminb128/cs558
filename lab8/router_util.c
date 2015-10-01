@@ -209,18 +209,22 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
 	memset(&dest, 0, sizeof(dest));
 	memset(&mac_addr, 0, sizeof(mac_addr));
 	mac_addr = getLocalMac(iface);
-	const char *pkt_mac = (const char *)eth->h_source;
-	const char *my_mac = (const char *) mac_addr.sa_data;
+    unsigned char *pkt_mac = (unsigned char *)eth->h_source;
+	unsigned char *my_mac = (unsigned char *) mac_addr.sa_data;
 	int ret = 0;
   	if( (ret = inet_aton(myIpAddr, &(dest.sin_addr))) == 0) {
   		return P_NOT_YET_IMPLEMENTED;
   	}
   	if (ntohs(iph->saddr) == dest.sin_addr.s_addr) {
+        printf("Source IP is same as myIP: %s ", myIpAddr);
   		return P_DO_NOTHING;
   	}
   	// check if source MAC address matches this device MAC address
-  	if(strncmp(pkt_mac, my_mac, ETH_ALEN) == 0)
+  	if(cmp_mac_addr(pkt_mac, my_mac) == 0){
+        //printf("Source MAC is same as myMac ");
         return P_DO_NOTHING;
+  	}
+
 
   	if (dest.sin_addr.s_addr == ntohs(iph->daddr)) {
   		// This packet targets at this node
@@ -239,6 +243,16 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   		}
   	}
 	return P_NOT_YET_IMPLEMENTED;
+}
+
+int cmp_mac_addr(unsigned char *mac1,unsigned char *mac2){
+    int i;
+    for(i = 0; i < ETH_ALEN; i++){
+       // printf("Mac1: %.2X Mac2: %.2X ", mac1[i], mac2[i]);
+        if(mac1[i] != mac2[i])
+            return -1;
+    }
+    return 0;
 }
 
 
@@ -261,11 +275,13 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
   	memset(&dest, 0, sizeof(dest));
   	dest.sin_addr.s_addr = iph->daddr;
 
+    printf("Dest IP: %s, Source IP : %s\n", inet_ntoa(dest.sin_addr), inet_ntoa(source.sin_addr));
   	memset(&arequest, 0, sizeof(arequest));
 
   	memset(&addr, 0, sizeof(addr));
 
   	if ((ret = rt_lookup(iph, &p)) < 0) {
+  		printf("Destination Unreachable\n");
   		return -1; // destination unreachable
   	}
 //	if (p == NULL) {
@@ -274,10 +290,8 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
  	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
 
   	// Now we have the routing table entry and is ready to modify packet
-//	printf("original ttl: %d\n", iph->ttl);
   	(iph->ttl)--;
-//  	printf("ttl is now %d\n", iph->ttl);
-
+    //printf("Dest IP: %s, Device : %s", inet_ntoa(dest.sin_addr), p.rt_dev);
   	if (ret == P_LOCAL) {
         arequest = getMACfromIP(inet_ntoa(dest.sin_addr), p.rt_dev);
 //        printf("modify_packet_new: getMACfromIP passed\n");
@@ -314,11 +328,13 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 	memset(&dest, 0, sizeof(dest));
   	dest.sin_addr.s_addr = iph->daddr;
 	int min_metric = 1000;
-
+    int match_found = 0;
 	while(p != NULL) {
 		if ((strlen(p->rt_dev) != 0) &&
 			((dest.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr) == ( p->rt_dst.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr))) {
 			// Matches
+			//printf("Match found");
+			match_found = 1;
 			if(p->rt_gateway.sin_addr.s_addr == 0x00000000) {
 				// Local network
 				//rtp = p;
@@ -336,7 +352,7 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 		p = p->next;
 	}
 
-	if (!rtp) {
+	if (!match_found) {
 		return -1;
 	}
 	return P_REMOTE;
@@ -354,7 +370,7 @@ int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* i
 
 int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int size) {
 	struct iphdr *iph = (struct iphdr *)(packetIn  + sizeof(struct ethhdr));
-    unsigned short iphdrlen = iph->ihl * 4;	
+    unsigned short iphdrlen = iph->ihl * 4;
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
     packetOut = malloc(new_packet_size);
     memset(packetOut, 0, new_packet_size);
@@ -382,7 +398,7 @@ void ip_pkt_hdr(u_char *packetOut){
     struct iphdr *iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
     iph->ttl=64;
     unsigned long src_ip = iph->saddr;
-    unsigned long dest_ip = iph->daddr;  
+    unsigned long dest_ip = iph->daddr;
 	iph->saddr = dest_ip;
     iph->daddr = src_ip;
     unsigned short cksum = calc_ip_checksum(packetOut);
@@ -417,7 +433,7 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface){
     //updating the source IP address
     char dst_ip[20];
     if(getIPfromIface(Interface,dst_ip)!=0) printf("Could not obtain source IP address of router.\n");
-	if(inet_aton(dst_ip,&iph.saddr)==0) printf("Invalid input address to inet_aton.\ns");
+	if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\ns");
     iph->tot_len = iphdrlen + sizeof(struct icmphdr) + 8;
     iph->protocol=1;
     unsigned short cksum = calc_ip_checksum(packetOut);
