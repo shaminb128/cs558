@@ -20,9 +20,6 @@
 #include <netinet/ip.h>
 #include <netinet/in.h>
 #include <linux/sockios.h>
-
-
-
 #include "route.h"
 #include "router_util.h"
 #include "packet_util.h"
@@ -47,7 +44,7 @@ struct arpreq getMACfromIP(char *ip, char *iface){
 	struct sockaddr_in *sin;
 	struct in_addr      ipaddr;
 
- //   printf("%s, %s \n", ip, iface);
+    printf("%s, %s \n", ip, iface);
 	/* Get an internet domain socket. */
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		perror("socket");
@@ -108,7 +105,6 @@ void updateEtherHeader(struct sockaddr *sourceAddr, struct sockaddr *destAddr, s
 
 void modify_packet(u_char *pkt_ptr, char* iface)
 {
-
 
     struct ethhdr *eth = (struct ethhdr *)pkt_ptr;
     struct iphdr *iph = (struct iphdr*)(pkt_ptr + sizeof(struct ethhdr));
@@ -205,10 +201,16 @@ int getIPfromIface(char* iface, char* ipstr) {
 }
 
 int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
+	struct ethhdr *eth = (struct ethhdr *)packetIn;
 	struct iphdr* iph= (struct iphdr*)(packetIn + sizeof(struct ethhdr));
 	int iphlen = iph->ihl * 4;
 	struct sockaddr_in dest;
+	struct sockaddr mac_addr;
 	memset(&dest, 0, sizeof(dest));
+	memset(&mac_addr, 0, sizeof(mac_addr));
+	mac_addr = getLocalMac(iface);
+	const char *pkt_mac = (const char *)eth->h_source;
+	const char *my_mac = (const char *) mac_addr.sa_data;
 	int ret = 0;
   	if( (ret = inet_aton(myIpAddr, &(dest.sin_addr))) == 0) {
   		return P_NOT_YET_IMPLEMENTED;
@@ -216,6 +218,9 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   	if (ntohs(iph->saddr) == dest.sin_addr.s_addr) {
   		return P_DO_NOTHING;
   	}
+  	// check if source MAC address matches this device MAC address
+  	if(strncmp(pkt_mac, my_mac, 14) == 0)
+        return P_DO_NOTHING;
 
   	if (dest.sin_addr.s_addr == ntohs(iph->daddr)) {
   		// This packet targets at this node
@@ -235,6 +240,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   	}
 	return P_NOT_YET_IMPLEMENTED;
 }
+
 
 int modify_packet_new(u_char* packetIn, char* iface, int size) {
 	struct ethhdr *eth = (struct ethhdr *)packetIn;
@@ -263,9 +269,9 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
   		return -1; // destination unreachable
   	}
 //	if (p == NULL) {
-//		printf("p is NULL after looking up\n");
-//	}
-//  	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
+//	printf("p is NULL after looking up\n");
+//}
+ 	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
 
   	// Now we have the routing table entry and is ready to modify packet
 //	printf("original ttl: %d\n", iph->ttl);
@@ -310,7 +316,6 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 	int min_metric = 1000;
 
 	while(p != NULL) {
-//		printf("iterating routingn table ...\n");
 		if ((strlen(p->rt_dev) != 0) &&
 			((dest.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr) == ( p->rt_dst.sin_addr.s_addr & p->rt_genmask.sin_addr.s_addr))) {
 			// Matches

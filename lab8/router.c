@@ -65,14 +65,11 @@ int main (int argc, char** argv) {
 			}
 		}
 	}
-
-
 	struct sniff* sniff_args = (struct sniff*)malloc( sizeof(struct sniff) * count);
 	printf("Here is a list of ethernet devices we try to listen:\n");
 	for (i = 0; i < count; i++) {
 		strcpy(sniff_args[i].dev_name, devices[i]);
 		strcpy(sniff_args[i].dev_ip, device_ips[i]);
-		
 	}
 	for(i = 0; i < count; i++) {
 		printf("%d. %s\t-\t%s\n", i, sniff_args[i].dev_name, sniff_args[i].dev_ip);
@@ -105,7 +102,7 @@ void sniffer(void* param) {
 	char err[128];
 	pcap_t *pcap_handle = NULL;
 
-	
+
 	sprintf(filename, "%s.log", data->dev_name);
 	if ( (data->logfile = fopen(filename, "w")) == NULL) {
 		fprintf(stderr, "Error opening packets.log\n");
@@ -167,9 +164,45 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			break;
 		case P_TIMEOUT:
 			fprintf(stdout, "thread %s: This is a timeout packet\n", data->dev_name);
+			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, iface, size)) <= 0 ) {
+				fprintf(stderr, "thread %s: fail to create timeout packet, with ret %d\n", data->dev_name, packetOutLen);
+			}
+			print_packet_handler(logfile, packetOut, packetOutLen);
+			if (packetOutLen > 0){
+				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
+					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
+					exit(1);
+				}
+				if ((ret = pcap_inject(handle, packetOut, packetOutLen)) < 0){
+					fprintf(stderr, "thread %s: fail to inject timeout packet %s\n", data->dev_name, iface);
+					exit(1);
+				}
+				fprintf(stdout, "thread %s: successfully injected timeout packet to %s, byte count: %d\n", data->dev_name, iface, ret);
+				pcap_close(handle);
+				memset(packetOut, 0, ETH_DATA_LEN);
+				memset(iface, 0, 10);
+
 			break;
 		case P_ICMPECHOREPLY:
 			fprintf(stdout, "thread %s: This packet needs icmp echo reply\n", data->dev_name);
+			if ( (packetOutLen = generate_icmp_echo_reply_packet(packet, packetOut, iface, size)) <= 0 ) {
+				fprintf(stderr, "thread %s: fail to create icmp echo reply, with ret %d\n", data->dev_name, packetOutLen);
+			}
+			print_packet_handler(logfile, packetOut, packetOutLen);
+			if (packetOutLen > 0){
+				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
+					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
+					exit(1);
+				}
+				if ((ret = pcap_inject(handle, packetOut, packetOutLen)) < 0){
+					fprintf(stderr, "thread %s: fail to inject icmp echo reply %s\n", data->dev_name, iface);
+					exit(1);
+				}
+				fprintf(stdout, "thread %s: successfully injected icmp echo packet to %s, byte count: %d\n", data->dev_name, iface, ret);
+				pcap_close(handle);
+				memset(packetOut, 0, ETH_DATA_LEN);
+				memset(iface, 0, 10);
+
 			break;
 		default:
 			break;

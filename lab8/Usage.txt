@@ -2,7 +2,7 @@ Usage
 
 1. Ping rtr1, rtr2, node3, node4
 2. Check arp -a to confirm that respective MAC addresses are present
-3. Increase the timeout of arp cache by modifying /proc/sys/net/ipv4/neigh/default/gc_stale_time to 3600
+3. Increase the timeout of arp cache by modifying /proc/sys/net/ipv4/neigh/default/gc_stale_time, /proc/sys/net/ipv4/route/gc_timeout to 3600
 4. Run route -n and update the routing table file accordingly
 5. Delete 10.x.x.x from rtr3 -> sudo route del -net 10.1.2.0 netmask 255.255.255.0 dev eth1 (use correct eth interface)
 6. In case, if arp cache is refreshed, add the route again by-> sudo route add -net 10.1.2.0 netmask 255.255.255.0 dev eth1
