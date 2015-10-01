@@ -204,7 +204,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
 	struct ethhdr *eth = (struct ethhdr *)packetIn;
 	struct iphdr* iph= (struct iphdr*)(packetIn + sizeof(struct ethhdr));
 	int iphlen = iph->ihl * 4;
-	struct sockaddr_in dest;
+	struct sockaddr_in dest;            //this will contain myIpAddr
 	struct sockaddr mac_addr;
 	memset(&dest, 0, sizeof(dest));
 	memset(&mac_addr, 0, sizeof(mac_addr));
@@ -215,7 +215,8 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   	if( (ret = inet_aton(myIpAddr, &(dest.sin_addr))) == 0) {
   		return P_NOT_YET_IMPLEMENTED;
   	}
-  	if (ntohs(iph->saddr) == dest.sin_addr.s_addr) {
+  	printf("myIPAddr %s\n", myIpAddr );
+  	if (iph->saddr == dest.sin_addr.s_addr) {
         printf("Source IP is same as myIP: %s ", myIpAddr);
   		return P_DO_NOTHING;
   	}
@@ -226,7 +227,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   	}
 
 
-  	if (dest.sin_addr.s_addr == ntohs(iph->daddr)) {
+  	if (dest.sin_addr.s_addr == iph->daddr) {
   		// This packet targets at this node
   		struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
   		if (icmph->type == ICMP_ECHO) {
@@ -268,13 +269,13 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
 	rt_table p;
     int ret = 0;
 
-
     memset(&source, 0, sizeof(source));
   	source.sin_addr.s_addr = iph->saddr;
 
   	memset(&dest, 0, sizeof(dest));
   	dest.sin_addr.s_addr = iph->daddr;
-
+    fprintf(stdout , "   |-Destination Address     : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
+  	fprintf(stdout , "   |-Source Address          : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_source[0] , eth->h_source[1] , eth->h_source[2] , eth->h_source[3] , eth->h_source[4] , eth->h_source[5] );
     //printf("modify_packet_new test: Dest IP: %s, Source IP : %s\n", inet_ntoa(dest.sin_addr), inet_ntoa(source.sin_addr));
   	memset(&arequest, 0, sizeof(arequest));
 
@@ -293,6 +294,7 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
   	(iph->ttl)--;
     //printf("Dest IP: %s, Device : %s", inet_ntoa(dest.sin_addr), p.rt_dev);
   	if (ret == P_LOCAL) {
+        //check if destination is me(rtr3), then get LocalMac
         arequest = getMACfromIP(inet_ntoa(dest.sin_addr), p.rt_dev);
 //        printf("modify_packet_new: getMACfromIP passed\n");
         addr = getLocalMac(p.rt_dev);
