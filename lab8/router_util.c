@@ -274,8 +274,8 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
 
   	memset(&dest, 0, sizeof(dest));
   	dest.sin_addr.s_addr = iph->daddr;
-    fprintf(stdout , "   |-Destination Address     : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
-  	fprintf(stdout , "   |-Source Address          : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_source[0] , eth->h_source[1] , eth->h_source[2] , eth->h_source[3] , eth->h_source[4] , eth->h_source[5] );
+    //fprintf(stdout , "   |-Destination Address     : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0] , eth->h_dest[1] , eth->h_dest[2] , eth->h_dest[3] , eth->h_dest[4] , eth->h_dest[5] );
+  	//fprintf(stdout , "   |-Source Address          : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_source[0] , eth->h_source[1] , eth->h_source[2] , eth->h_source[3] , eth->h_source[4] , eth->h_source[5] );
     //printf("modify_packet_new test: Dest IP: %s, Source IP : %s\n", inet_ntoa(dest.sin_addr), inet_ntoa(source.sin_addr));
   	memset(&arequest, 0, sizeof(arequest));
 
@@ -361,8 +361,8 @@ int rt_lookup(struct iphdr* iph, rt_table* rtp) {
 }
 
 int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* interface, int size) {
-	packetOut = malloc(size);
-	memset(packetOut,0,size);
+	//packetOut = malloc(size);
+	//memset(packetOut,0,size);
 	memcpy(packetOut,packetIn,size);
     eth_pkt_hdr(packetOut);
     ip_pkt_hdr(packetOut);

@@ -21,6 +21,7 @@
 typedef struct sniff {
 	char dev_name[50];
 	char dev_ip[20];
+    pcap_t *handler_t;
 	FILE* logfile;
 
 }sniff_t;
@@ -113,7 +114,7 @@ void sniffer(void* param) {
 		fprintf(stderr, "Error opening device %s, with error message %s\n", data->dev_name, err);
 		exit(1);
 	}
-
+    data->handler_t = pcap_handle;
 	pcap_loop(pcap_handle , 40 , process_packet , (u_char*)data );	// -1 means an infinite loop
 
 	fclose(data->logfile);
@@ -132,9 +133,9 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int ret = 0;
 	int packetOutLen = 0;
 
-
+    pcap_t* handle_temp = data->handler_t;
 	//printf("Received a packet, size = %d\n", size);
-	
+
 	//print_packet_handler(stdout, packetOut, size);
     struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
     if (iph->protocol != 1 && iph->protocol != 6 && iph->protocol != 17) {
@@ -194,21 +195,22 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			if ( (packetOutLen = generate_icmp_echo_reply_packet(packet, packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create icmp echo reply, with ret %d\n", data->dev_name, packetOutLen);
 			}
-			fprintf(stdout, "thread %s: icmp echo reply packet generated, should be sent to %s\n", data->dev_name, iface);
+			fprintf(stdout, "thread %s: icmp echo reply packet generated, should be sent to %s\n", data->dev_name, data->dev_name);
 			print_packet_handler(logfile, packetOut, packetOutLen);
+
 			if (packetOutLen > 0){
-				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
-					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
+//				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
+//					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
+//					exit(1);
+//				}
+				if ((ret = pcap_inject(handle_temp, packetOut, packetOutLen)) < 0){
+					fprintf(stderr, "thread %s: fail to inject icmp echo reply %s\n", data->dev_name, data->dev_name);
 					exit(1);
 				}
-				if ((ret = pcap_inject(handle, packetOut, packetOutLen)) < 0){
-					fprintf(stderr, "thread %s: fail to inject icmp echo reply %s\n", data->dev_name, iface);
-					exit(1);
-				}
-				fprintf(stdout, "thread %s: successfully injected icmp echo packet to %s, byte count: %d\n", data->dev_name, iface, ret);
-				pcap_close(handle);
+				fprintf(stdout, "thread %s: successfully injected icmp echo packet to %s, byte count: %d\n", data->dev_name, data->dev_name, ret);
+				//pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
-				memset(iface, 0, 10);
+				//memset(iface, 0, 10);
 			}
 			break;
 		default:
