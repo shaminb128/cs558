@@ -23,4 +23,4 @@ route.o: route.c route.h
 arp.o: arp.c
 	gcc -c -Wall arp.c
 clean:
-	rm -rf *.o router pcaptest route_lib
+	rm -rf *.o *.log router pcaptest route_lib

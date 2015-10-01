@@ -46,7 +46,7 @@ void print_packet_handler(FILE* logfile, const u_char *Buffer, int size) {
       		break;
   	}
   	/* TEST */
-  	printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
+  	//printf("TCP : %d   UDP : %d   ICMP : %d   Others : %d   Total : %d\n", tcp , udp , icmp , others , total);
 }
 void print_ethernet_header(FILE* logfile, const u_char *Buffer, int Size)
 {

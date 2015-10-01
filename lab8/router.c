@@ -114,7 +114,7 @@ void sniffer(void* param) {
 		exit(1);
 	}
 
-	pcap_loop(pcap_handle , 10 , process_packet , (u_char*)data );	// -1 means an infinite loop
+	pcap_loop(pcap_handle , 40 , process_packet , (u_char*)data );	// -1 means an infinite loop
 
 	fclose(data->logfile);
 	printf("thread %s: DONE!\n", data->dev_name);
@@ -134,20 +134,22 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 
 	//printf("Received a packet, size = %d\n", size);
-	memcpy(packetOut, packet, size);
+	
 	//print_packet_handler(stdout, packetOut, size);
     struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
     if (iph->protocol != 1 && iph->protocol != 6 && iph->protocol != 17) {
 	    return;
     }
 	ret = routing_opt(packet, data->dev_ip, data->dev_name);
-	printf("routing_opt = %d\n", ret);
+	fprintf(stdout, "thread %s: routing_opt = %d\n", data->dev_name, ret);
 	switch(ret) {
 		case P_FORWARD:
 			fprintf(stdout, "thread %s: Ready to modify the packet for forwarding...\n", data->dev_name);
+			memcpy(packetOut, packet, size);
 			if ( (packetOutLen = modify_packet_new(packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to modify packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
+			fprintf(stdout, "thread %s: packet modified, should be sent to %s\n", data->dev_name, iface);
 			// printf("\nPACKET MODIFIED: size: %d, This packet is going to be sent to %s\nHere are the details:\n", packetOutLen, iface);
 			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
@@ -170,6 +172,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create timeout packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
+			fprintf(stdout, "thread %s: icmp timeout packet generated, should be sent to %s\n", data->dev_name, iface);
 			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
 				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
@@ -191,6 +194,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			if ( (packetOutLen = generate_icmp_echo_reply_packet(packet, packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create icmp echo reply, with ret %d\n", data->dev_name, packetOutLen);
 			}
+			fprintf(stdout, "thread %s: icmp echo reply packet generated, should be sent to %s\n", data->dev_name, iface);
 			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
 				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
@@ -208,6 +212,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			}
 			break;
 		default:
+			fprintf(stdout, "thread %s: This packet should not be dropped, with ret %d\n", data->dev_name, ret);
 			break;
 	}
 

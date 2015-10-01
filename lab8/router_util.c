@@ -44,7 +44,7 @@ struct arpreq getMACfromIP(char *ip, char *iface){
 	struct sockaddr_in *sin;
 	struct in_addr      ipaddr;
 
-    printf("%s, %s \n", ip, iface);
+//    printf("%s, %s \n", ip, iface);
 	/* Get an internet domain socket. */
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) == -1) {
 		perror("socket");
@@ -275,7 +275,7 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
   	memset(&dest, 0, sizeof(dest));
   	dest.sin_addr.s_addr = iph->daddr;
 
-    printf("Dest IP: %s, Source IP : %s\n", inet_ntoa(dest.sin_addr), inet_ntoa(source.sin_addr));
+    //printf("modify_packet_new test: Dest IP: %s, Source IP : %s\n", inet_ntoa(dest.sin_addr), inet_ntoa(source.sin_addr));
   	memset(&arequest, 0, sizeof(arequest));
 
   	memset(&addr, 0, sizeof(addr));
@@ -369,19 +369,27 @@ int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* i
 }
 
 int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int size) {
+	print_packet_handler(stdout, packetIn, size);
 	struct iphdr *iph = (struct iphdr *)(packetIn  + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
-    packetOut = malloc(new_packet_size);
-    memset(packetOut, 0, new_packet_size);
+    //packetOut = malloc(new_packet_size);
+    //memset(packetOut, 0, new_packet_size);
     // Copy the ethernet header and ipheader from udp packet to packetOut.
+	printf("checkpoint 0,addr raw, iph->saddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
+  printf("checkpoint 1\n");
 	memcpy(packetOut,packetIn, sizeof(struct ethhdr)+iphdrlen);
     // Get the ipheader and 64bits of payload of udp packet to the end of packetout
+  printf("checkpoint 2\n");
 	memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),
            packetIn + sizeof(struct ethhdr) , iphdrlen+8 );
+  printf("checkpoint 3\n");
     eth_pkt_hdr(packetOut);
+    printf("checkpoint 4\n");
     ip_pkt_ttl0_hdr(packetOut,interface);
+    printf("checkpoint 5\n");
     icmp_pkt_ttl0_hdr(packetOut, new_packet_size);
+    printf("checkpoint 6\n");
     return new_packet_size;
 }
 //supporting functions for ICMP replies
@@ -426,17 +434,28 @@ int update_size_icmp_pkt(u_char *packetIn, int packet_size) {
 void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface){
     struct iphdr *iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
     unsigned short iphdrlen = iph->ihl * 4;
+    struct sockaddr_in source;
+    int ret = 0;
     iph->ttl = 64;
     //updating the destination IP address
+    printf("checkpoint ttl.1, iph->sddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
     unsigned long src_ip = iph->saddr;
     iph->daddr = src_ip;
     //updating the source IP address
     char dst_ip[20];
     if(getIPfromIface(Interface,dst_ip)!=0) printf("Could not obtain source IP address of router.\n");
-	if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\ns");
+    printf("checkpoint ttl.2, dst_ip = %s\n", dst_ip);
+//	if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\n");
+    if( (ret = inet_aton(dst_ip, &(source.sin_addr))) == 0) {
+      printf("invalid destip\n");
+    }
+    iph->saddr = htons(source.sin_addr.s_addr);
+    printf("checkpoint ttl.3, s_addr = %.8x, saddr = %.8x\n", source.sin_addr.s_addr, htons(source.sin_addr.s_addr));
     iph->tot_len = iphdrlen + sizeof(struct icmphdr) + 8;
     iph->protocol=1;
+    printf("checkpoint ttl.4\n");
     unsigned short cksum = calc_ip_checksum(packetOut);
+    printf("checkpoint ttl.5\n");
     iph->check = htons(cksum);
 }
 
