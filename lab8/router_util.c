@@ -265,7 +265,7 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
 
   	memset(&addr, 0, sizeof(addr));
 
-  	if ((ret = rt_lookup(iph, &p)) != 0) {
+  	if ((ret = rt_lookup(iph, &p)) < 0) {
   		return -1; // destination unreachable
   	}
 //	if (p == NULL) {
