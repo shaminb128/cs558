@@ -219,7 +219,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   		return P_DO_NOTHING;
   	}
   	// check if source MAC address matches this device MAC address
-  	if(strncmp(pkt_mac, my_mac, 14) == 0)
+  	if(strncmp(pkt_mac, my_mac, ETH_ALEN) == 0)
         return P_DO_NOTHING;
 
   	if (dest.sin_addr.s_addr == ntohs(iph->daddr)) {
