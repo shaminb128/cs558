@@ -29,6 +29,12 @@ typedef enum {
 	P_REMOTE
 } pf_t;
 
+/**
+ * This function takes two MAC addresses and compares
+ * them by each character
+ * Returns 0: if each charater of 8 bits is same
+ * Return -1: if mismatch between any character
+ */
 int cmp_mac_addr(unsigned char *,unsigned char *);
 /**
  * This function takes Device name of the interface and
