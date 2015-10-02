@@ -455,7 +455,7 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface){
     iph->saddr = source.sin_addr.s_addr;
     printf("checkpoint ttl.3, iph->saddr %.8x\n", iph->saddr);
     iph->tot_len = iphdrlen + sizeof(struct icmphdr) +iphdrlen + 8;
-    iph->protocol=1;
+    iph->protocol = 1;
     printf("checkpoint ttl.4\n");
     unsigned short cksum = calc_ip_checksum(packetOut);
     printf("checkpoint ttl.5\n");
