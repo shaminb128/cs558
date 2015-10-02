@@ -446,15 +446,15 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface){
     unsigned long src_ip = iph->saddr;
     iph->daddr = src_ip;
     //updating the source IP address
-    char dst_ip[20];
-    if(getIPfromIface(Interface,dst_ip)!=0) printf("Could not obtain source IP address of router.\n");
-    printf("checkpoint ttl.2, dst_ip = %s\n", dst_ip);
+    char rtr_ip[20];
+    if(getIPfromIface(Interface,rtr_ip)!=0) printf("Could not obtain source IP address of router.\n");
+    printf("checkpoint ttl.2, dst_ip = %s\n", rtr_ip);
 //	if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\n");
-    if( (ret = inet_aton(dst_ip, &(source.sin_addr))) == 0) {
-      printf("invalid destip\n");
+    if( (ret = inet_aton(rtr_ip, &(source.sin_addr))) == 0) {
+      printf("invalid rtr ip\n");
     }
-    iph->saddr = htons(source.sin_addr.s_addr);
-    printf("checkpoint ttl.3, s_addr = %.8x, saddr = %.8x\n", source.sin_addr.s_addr, htons(source.sin_addr.s_addr));
+    iph->saddr = source.sin_addr.s_addr;
+    printf("checkpoint ttl.3, iph->saddr %.8x\n", iph->saddr);
     iph->tot_len = iphdrlen + sizeof(struct icmphdr) + 8;
     iph->protocol=1;
     printf("checkpoint ttl.4\n");
