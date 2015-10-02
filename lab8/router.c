@@ -117,6 +117,7 @@ void sniffer(void* param) {
     data->handler_t = pcap_handle;
 	pcap_loop(pcap_handle , 40 , process_packet , (u_char*)data );	// -1 means an infinite loop
 
+	printf("thread %s: House Keeping\n", data->dev_name);
 	fclose(data->logfile);
 	printf("thread %s: DONE!\n", data->dev_name);
 }
@@ -133,14 +134,19 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int ret = 0;
 	int packetOutLen = 0;
 
-    pcap_t* handle_temp = data->handler_t;
+    pcap_t* handle_sniffed = data->handler_t;
 	//printf("Received a packet, size = %d\n", size);
 
 	//print_packet_handler(stdout, packetOut, size);
     struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
     if (iph->protocol != 1 && iph->protocol != 6 && iph->protocol != 17) {
+	fprintf(stderr, "thread %s: Protocol Not Supported. iph->protocol = %d\n", data->dev_name, (unsigned int)iph->protocol);
 	    return;
     }
+	if (((iph->saddr & 0x000000ff) != 0x0000000a) || ((iph->daddr & 0x000000ff) != 0x0000000a)) {
+		fprintf(stderr, "thread %s: IP not supported. iph->saddr test = %.8x, iph->daddr test = %.8x\n", data->dev_name, iph->saddr & 0x000000ff, iph->daddr & 0x000000ff);
+		return;
+	}
 	ret = routing_opt(packet, data->dev_ip, data->dev_name);
 	fprintf(stdout, "thread %s: routing_opt = %d\n", data->dev_name, ret);
 	switch(ret) {
@@ -203,7 +209,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 //					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
 //					exit(1);
 //				}
-				if ((ret = pcap_inject(handle_temp, packetOut, packetOutLen)) < 0){
+				if ((ret = pcap_inject(handle_sniffed, packetOut, packetOutLen)) < 0){
 					fprintf(stderr, "thread %s: fail to inject icmp echo reply %s\n", data->dev_name, data->dev_name);
 					exit(1);
 				}

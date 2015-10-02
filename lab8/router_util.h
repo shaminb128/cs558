@@ -29,6 +29,7 @@ typedef enum {
 	P_REMOTE
 } pf_t;
 
+
 /**
  * This function takes two MAC addresses and compares
  * them by each character

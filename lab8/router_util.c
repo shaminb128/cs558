@@ -397,11 +397,13 @@ int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* 
 //supporting functions for ICMP replies
 void eth_pkt_hdr(u_char *packetOut){
     struct ethhdr *eth = (struct ethhdr *)packetOut;
-    char src_mac[ETH_HLEN], dest_mac[ETH_HLEN];
-    memcpy(dest_mac, eth->h_source, ETH_HLEN);
-    memcpy(src_mac, eth->h_dest, ETH_HLEN);
-    memcpy((void*)packetOut, (void*)dest_mac, ETH_HLEN);
-    memcpy((void*)(packetOut+ETH_HLEN), (void*)src_mac, ETH_HLEN);
+    char dest_mac[ETH_ALEN];
+    memcpy(dest_mac, eth->h_source, ETH_ALEN);
+    memcpy(eth->h_source, eth->h_dest, ETH_ALEN);
+    memcpy(eth->h_dest, dest_mac, ETH_ALEN);
+//    memcpy(src_mac, eth->h_dest, ETH_ALEN);
+//    memcpy((void*)packetOut, (void*)dest_mac, ETH_HLEN);
+//    memcpy((void*)(packetOut+ETH_HLEN), (void*)src_mac, ETH_HLEN);
 }
 
 void ip_pkt_hdr(u_char *packetOut){
