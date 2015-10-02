@@ -377,14 +377,13 @@ int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* 
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
     //packetOut = malloc(new_packet_size);
     //memset(packetOut, 0, new_packet_size);
-    // Copy the ethernet header and ipheader from udp packet to packetOut.
-	printf("checkpoint 0,addr raw, iph->saddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
+  printf("checkpoint 0,addr raw, iph->saddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
   printf("checkpoint 1\n");
+   // Copy the ethernet header and ipheader from udp packet to packetOut
 	memcpy(packetOut,packetIn, sizeof(struct ethhdr)+iphdrlen);
     // Get the ipheader and 64bits of payload of udp packet to the end of packetout
   printf("checkpoint 2\n");
-	memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),
-           packetIn + sizeof(struct ethhdr) , iphdrlen+8 );
+	memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
   printf("checkpoint 3\n");
     eth_pkt_hdr(packetOut);
     printf("checkpoint 4\n");
@@ -455,7 +454,7 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface){
     }
     iph->saddr = source.sin_addr.s_addr;
     printf("checkpoint ttl.3, iph->saddr %.8x\n", iph->saddr);
-    iph->tot_len = iphdrlen + sizeof(struct icmphdr) + 8;
+    iph->tot_len = iphdrlen + sizeof(struct icmphdr) +iphdrlen + 8;
     iph->protocol=1;
     printf("checkpoint ttl.4\n");
     unsigned short cksum = calc_ip_checksum(packetOut);
