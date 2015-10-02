@@ -177,7 +177,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 		case P_TIMEOUT:
 
 			fprintf(stdout, "thread %s: This is a timeout packet\n", data->dev_name);
-			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, data->dev_name, size)) <= 0 ) {
+			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, data->dev_ip, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create timeout packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
 			fprintf(stdout, "thread %s: icmp timeout packet generated, should be sent to %s\n", data->dev_name, iface);
