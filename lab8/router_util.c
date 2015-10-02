@@ -33,7 +33,7 @@ struct sockaddr getLocalMac(char *iface) {
     if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
         return s.ifr_hwaddr;
   	}
-  	printf("ERROR: getLocalMac(): ioctl() returns negative value\n");
+  	fprintf(stderr, "getLocalMac: ERROR: getLocalMac(): ioctl() returns negative value\n");
   	return s.ifr_hwaddr;
 }
 
@@ -69,7 +69,7 @@ struct arpreq getMACfromIP(char *ip, char *iface){
 	strncpy(areq.arp_dev, iface, 15);
 
 	if (ioctl(s, SIOCGARP, (caddr_t) &areq) == -1) {
-		fprintf(stderr, "ERROR making ARP request, ip = %s, iface = %s\n", ip, iface);
+		fprintf(stderr, "getMACfromIP: ERROR making ARP request, ip = %s, iface = %s\n", ip, iface);
 		perror("-- Error: unable to make ARP request, error");
 		exit(1);
 	}
@@ -216,9 +216,9 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
   	if( (ret = inet_aton(myIpAddr, &(dest.sin_addr))) == 0) {
   		return P_NOT_YET_IMPLEMENTED;
   	}
-  	printf("myIPAddr %s\n", myIpAddr );
+//  	printf("myIPAddr %s\n", myIpAddr );
   	if (iph->saddr == dest.sin_addr.s_addr) {
-        printf("Source IP is same as myIP: %s ", myIpAddr);
+//        printf("Source IP is same as myIP: %s ", myIpAddr);
   		return P_DO_NOTHING;
   	}
   	// check if source MAC address matches this device MAC address
@@ -283,13 +283,13 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
   	memset(&addr, 0, sizeof(addr));
 
   	if ((ret = rt_lookup(iph, &p)) < 0) {
-  		printf("Destination Unreachable\n");
+  		fprintf(stderr, "modify_packet_new: Destination Unreachable\n");
   		return -1; // destination unreachable
   	}
 //	if (p == NULL) {
 //	printf("p is NULL after looking up\n");
 //}
- 	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
+// 	printf("modify_packet_new: successfully did rt lookup, the packet is sent to %d\n", ret);
 
   	// Now we have the routing table entry and is ready to modify packet
   	(iph->ttl)--;
@@ -378,20 +378,20 @@ int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* 
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
     //packetOut = malloc(new_packet_size);
     //memset(packetOut, 0, new_packet_size);
-  printf("checkpoint 0,addr raw, iph->saddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
-  printf("checkpoint 1\n");
+//  printf("checkpoint 0,addr raw, iph->saddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
+//  printf("checkpoint 1\n");
    // Copy the ethernet header and ipheader from udp packet to packetOut
 	memcpy(packetOut,packetIn, sizeof(struct ethhdr)+iphdrlen);
     // Get the ipheader and 64bits of payload of udp packet to the end of packetout
-  printf("checkpoint 2\n");
+//  printf("checkpoint 2\n");
 	//memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
-  printf("checkpoint 3\n");
+//  printf("checkpoint 3\n");
     eth_pkt_hdr(packetOut);
-    printf("checkpoint 4\n");
+//    printf("checkpoint 4\n");
     ip_pkt_ttl0_hdr(packetOut,myip);
-    printf("checkpoint 5\n");
+//    printf("checkpoint 5\n");
     icmp_pkt_ttl0_hdr(packetOut, new_packet_size);
-    printf("checkpoint 6\n");
+//    printf("checkpoint 6\n");
     //copying original IP header as payload
     //memcpy(packetOut+sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr),packetOut+sizeof(struct ethhdr),iphdrlen);
     memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
@@ -452,7 +452,7 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* myip){
     iph->tos = 192;
     iph->ttl = 64;
     //updating the destination IP address
-    printf("checkpoint ttl.1, iph->sddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
+//    printf("checkpoint ttl.1, iph->sddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
     unsigned long src_ip = iph->saddr;
     iph->daddr = src_ip;
     //updating the source IP address
@@ -460,15 +460,15 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* myip){
     //printf("checkpoint ttl.2, dst_ip = %s\n", rtr_ip);
 	//if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\n");
     if( (ret = inet_aton(myip, &(source.sin_addr))) == 0) {
-      printf("invalid rtr ip\n");
+      fprintf(stderr, "ip_pkt_ttl0_hdr: invalid rtr ip\n");
     }
     iph->saddr = source.sin_addr.s_addr;
-    printf("checkpoint ttl.3, iph->saddr %.8x\n", iph->saddr);
+//    printf("checkpoint ttl.3, iph->saddr %.8x\n", iph->saddr);
     iph->tot_len = htons(iphdrlen + sizeof(struct icmphdr) +iphdrlen + 8);
     iph->protocol = 1;
-    printf("checkpoint ttl.4\n");
+//    printf("checkpoint ttl.4\n");
     unsigned short cksum = calc_ip_checksum(packetOut);
-    printf("checkpoint ttl.5\n");
+//    printf("checkpoint ttl.5\n");
     iph->check = htons(cksum);
 }
 

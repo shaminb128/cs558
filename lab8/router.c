@@ -98,17 +98,17 @@ int main (int argc, char** argv) {
 
 void sniffer(void* param) {
 	struct sniff* data = (struct sniff*)param;
-	printf("preparing sniffing device %s, ip %s\n", data->dev_name, data->dev_ip);
+//	printf("preparing sniffing device %s, ip %s\n", data->dev_name, data->dev_ip);
 	char filename[20];
 	char err[128];
 	pcap_t *pcap_handle = NULL;
 
 
-	sprintf(filename, "%s.log", data->dev_name);
-	if ( (data->logfile = fopen(filename, "w")) == NULL) {
-		fprintf(stderr, "Error opening packets.log\n");
-		exit(1);
-	}
+//	sprintf(filename, "%s.log", data->dev_name);
+//	if ( (data->logfile = fopen(filename, "w")) == NULL) {
+//		fprintf(stderr, "Error opening packets.log\n");
+//		exit(1);
+//	}
 
 	if ( (pcap_handle = pcap_open_live(data->dev_name, BUFSIZ, 1, 100, err)) == NULL ) {
 		fprintf(stderr, "Error opening device %s, with error message %s\n", data->dev_name, err);
@@ -117,9 +117,9 @@ void sniffer(void* param) {
     data->handler_t = pcap_handle;
 	pcap_loop(pcap_handle , 350 , process_packet , (u_char*)data );	// -1 means an infinite loop
 
-	printf("thread %s: House Keeping\n", data->dev_name);
-	fclose(data->logfile);
-	printf("thread %s: DONE!\n", data->dev_name);
+//	printf("thread %s: House Keeping\n", data->dev_name);
+//	fclose(data->logfile);
+//	printf("thread %s: DONE!\n", data->dev_name);
 }
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
@@ -140,25 +140,25 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	//print_packet_handler(stdout, packetOut, size);
     struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
     if (iph->protocol != 1 && iph->protocol != 6 && iph->protocol != 17) {
-	fprintf(stderr, "thread %s: Protocol Not Supported. iph->protocol = %d\n", data->dev_name, (unsigned int)iph->protocol);
+//	fprintf(stderr, "thread %s: Protocol Not Supported. iph->protocol = %d\n", data->dev_name, (unsigned int)iph->protocol);
 	    return;
     }
 	if (((iph->saddr & 0x000000ff) != 0x0000000a) || ((iph->daddr & 0x000000ff) != 0x0000000a)) {
-		fprintf(stderr, "thread %s: IP not supported. iph->saddr test = %.8x, iph->daddr test = %.8x\n", data->dev_name, iph->saddr & 0x000000ff, iph->daddr & 0x000000ff);
+//		fprintf(stderr, "thread %s: IP not supported. iph->saddr test = %.8x, iph->daddr test = %.8x\n", data->dev_name, iph->saddr & 0x000000ff, iph->daddr & 0x000000ff);
 		return;
 	}
 	ret = routing_opt(packet, data->dev_ip, data->dev_name);
-	fprintf(stdout, "thread %s: routing_opt = %d\n", data->dev_name, ret);
+//	fprintf(stdout, "thread %s: routing_opt = %d\n", data->dev_name, ret);
 	switch(ret) {
 		case P_FORWARD:
-			fprintf(stdout, "thread %s: Ready to modify the packet for forwarding...\n", data->dev_name);
+//			fprintf(stdout, "thread %s: Ready to modify the packet for forwarding...\n", data->dev_name);
 			memcpy(packetOut, packet, size);
 			if ( (packetOutLen = modify_packet_new(packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to modify packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
-			fprintf(stdout, "thread %s: packet modified, should be sent to %s\n", data->dev_name, iface);
+//			fprintf(stdout, "thread %s: packet modified, should be sent to %s\n", data->dev_name, iface);
 			// printf("\nPACKET MODIFIED: size: %d, This packet is going to be sent to %s\nHere are the details:\n", packetOutLen, iface);
-			print_packet_handler(logfile, packetOut, packetOutLen);
+//			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
 				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
 					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
@@ -168,7 +168,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 					fprintf(stderr, "thread %s: fail to inject packet %s\n", data->dev_name, iface);
 					exit(1);
 				}
-				fprintf(stdout, "thread %s: successfully injected packet to %s, byte count: %d\n", data->dev_name, iface, ret);
+//				fprintf(stdout, "thread %s: successfully injected packet to %s, byte count: %d\n", data->dev_name, iface, ret);
 				pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
@@ -176,12 +176,12 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			break;
 		case P_TIMEOUT:
 
-			fprintf(stdout, "thread %s: This is a timeout packet\n", data->dev_name);
+//			fprintf(stdout, "thread %s: This is a timeout packet\n", data->dev_name);
 			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, data->dev_ip, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create timeout packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
-			fprintf(stdout, "thread %s: icmp timeout packet generated, should be sent to %s\n", data->dev_name, data->dev_name);
-			print_packet_handler(logfile, packetOut, packetOutLen);
+//			fprintf(stdout, "thread %s: icmp timeout packet generated, should be sent to %s\n", data->dev_name, data->dev_name);
+//			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
 //				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
 //					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
@@ -191,19 +191,19 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 					fprintf(stderr, "thread %s: fail to inject timeout packet %s\n", data->dev_name, data->dev_name);
 					exit(1);
 				}
-				fprintf(stdout, "thread %s: successfully injected timeout packet to %s, byte count: %d\n", data->dev_name, data->dev_name, ret);
+//				fprintf(stdout, "thread %s: successfully injected timeout packet to %s, byte count: %d\n", data->dev_name, data->dev_name, ret);
 				//pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
 			}
 			break;
 		case P_ICMPECHOREPLY:
-			fprintf(stdout, "thread %s: This packet needs icmp echo reply\n", data->dev_name);
+//			fprintf(stdout, "thread %s: This packet needs icmp echo reply\n", data->dev_name);
 			if ( (packetOutLen = generate_icmp_echo_reply_packet(packet, packetOut, iface, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create icmp echo reply, with ret %d\n", data->dev_name, packetOutLen);
 			}
-			fprintf(stdout, "thread %s: icmp echo reply packet generated, should be sent to %s\n", data->dev_name, data->dev_name);
-			print_packet_handler(logfile, packetOut, packetOutLen);
+//			fprintf(stdout, "thread %s: icmp echo reply packet generated, should be sent to %s\n", data->dev_name, data->dev_name);
+//			print_packet_handler(logfile, packetOut, packetOutLen);
 
 			if (packetOutLen > 0){
 //				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
@@ -214,14 +214,14 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 					fprintf(stderr, "thread %s: fail to inject icmp echo reply %s\n", data->dev_name, data->dev_name);
 					exit(1);
 				}
-				fprintf(stdout, "thread %s: successfully injected icmp echo packet to %s, byte count: %d\n", data->dev_name, data->dev_name, ret);
+//				fprintf(stdout, "thread %s: successfully injected icmp echo packet to %s, byte count: %d\n", data->dev_name, data->dev_name, ret);
 				//pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				//memset(iface, 0, 10);
 			}
 			break;
 		default:
-			fprintf(stdout, "thread %s: This packet should not be dropped, with ret %d\n", data->dev_name, ret);
+//			fprintf(stdout, "thread %s: This packet should not be dropped, with ret %d\n", data->dev_name, ret);
 			break;
 	}
 
