@@ -115,7 +115,7 @@ void sniffer(void* param) {
 		exit(1);
 	}
     data->handler_t = pcap_handle;
-	pcap_loop(pcap_handle , 40 , process_packet , (u_char*)data );	// -1 means an infinite loop
+	pcap_loop(pcap_handle , 350 , process_packet , (u_char*)data );	// -1 means an infinite loop
 
 	printf("thread %s: House Keeping\n", data->dev_name);
 	fclose(data->logfile);
@@ -177,10 +177,10 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 		case P_TIMEOUT:
 
 			fprintf(stdout, "thread %s: This is a timeout packet\n", data->dev_name);
-			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, data->dev_name, size)) <= 0 ) {
+			if ( (packetOutLen = generate_icmp_time_exceed_packet(packet, packetOut, data->dev_ip, size)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to create timeout packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
-			fprintf(stdout, "thread %s: icmp timeout packet generated, should be sent to %s\n", data->dev_name, iface);
+			fprintf(stdout, "thread %s: icmp timeout packet generated, should be sent to %s\n", data->dev_name, data->dev_name);
 			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
 //				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
@@ -188,10 +188,10 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 //					exit(1);
 //				}
 				if ((ret = pcap_inject(handle_sniffed, packetOut, packetOutLen)) < 0){
-					fprintf(stderr, "thread %s: fail to inject timeout packet %s\n", data->dev_name, iface);
+					fprintf(stderr, "thread %s: fail to inject timeout packet %s\n", data->dev_name, data->dev_name);
 					exit(1);
 				}
-				fprintf(stdout, "thread %s: successfully injected timeout packet to %s, byte count: %d\n", data->dev_name, iface, ret);
+				fprintf(stdout, "thread %s: successfully injected timeout packet to %s, byte count: %d\n", data->dev_name, data->dev_name, ret);
 				//pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);

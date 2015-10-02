@@ -69,6 +69,7 @@ struct arpreq getMACfromIP(char *ip, char *iface){
 	strncpy(areq.arp_dev, iface, 15);
 
 	if (ioctl(s, SIOCGARP, (caddr_t) &areq) == -1) {
+		fprintf(stderr, "ERROR making ARP request, ip = %s, iface = %s\n", ip, iface);
 		perror("-- Error: unable to make ARP request, error");
 		exit(1);
 	}
@@ -370,8 +371,8 @@ int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* i
 	return size;
 }
 
-int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* interface, int size) {
-	print_packet_handler(stdout, packetIn, size);
+int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* myip, int size) {
+	//print_packet_handler(stdout, packetIn, size);
 	struct iphdr *iph = (struct iphdr *)(packetIn  + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
@@ -383,15 +384,24 @@ int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* 
 	memcpy(packetOut,packetIn, sizeof(struct ethhdr)+iphdrlen);
     // Get the ipheader and 64bits of payload of udp packet to the end of packetout
   printf("checkpoint 2\n");
-	memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
+	//memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
   printf("checkpoint 3\n");
     eth_pkt_hdr(packetOut);
     printf("checkpoint 4\n");
-    ip_pkt_ttl0_hdr(packetOut,interface);
+    ip_pkt_ttl0_hdr(packetOut,myip);
     printf("checkpoint 5\n");
     icmp_pkt_ttl0_hdr(packetOut, new_packet_size);
     printf("checkpoint 6\n");
-    return new_packet_size;
+    //copying original IP header as payload
+    //memcpy(packetOut+sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr),packetOut+sizeof(struct ethhdr),iphdrlen);
+    memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
+    //copying 8 Byte
+    memcpy(packetOut+sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen,packetIn+sizeof(struct ethhdr)+iphdrlen,8);
+    
+    struct icmphdr* icmph = (struct icmphdr*)(packetOut + sizeof(struct ethhdr)+iphdrlen);
+    unsigned short cksum = calc_icmp_checksum(packetOut, new_packet_size);
+    icmph->checksum = htons(cksum);
+	return new_packet_size;
 }
 //supporting functions for ICMP replies
 void eth_pkt_hdr(u_char *packetOut){
@@ -434,27 +444,27 @@ int update_size_icmp_pkt(u_char *packetIn, int packet_size) {
     return new_payload_size + sizeof(struct icmphdr) + iphdrlen + sizeof(struct ethhdr);
 }
 
-void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface){
+void ip_pkt_ttl0_hdr(u_char *packetOut, char* myip){
     struct iphdr *iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr) );
     unsigned short iphdrlen = iph->ihl * 4;
     struct sockaddr_in source;
     int ret = 0;
+    iph->tos = 192;
     iph->ttl = 64;
     //updating the destination IP address
     printf("checkpoint ttl.1, iph->sddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
     unsigned long src_ip = iph->saddr;
     iph->daddr = src_ip;
     //updating the source IP address
-    char rtr_ip[20];
-    if(getIPfromIface(Interface,rtr_ip)!=0) printf("Could not obtain source IP address of router.\n");
-    printf("checkpoint ttl.2, dst_ip = %s\n", rtr_ip);
-//	if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\n");
-    if( (ret = inet_aton(rtr_ip, &(source.sin_addr))) == 0) {
+    //if(getIPfromIface(Interface,rtr_ip)!=0) printf("Could not obtain source IP address of router.\n");
+    //printf("checkpoint ttl.2, dst_ip = %s\n", rtr_ip);
+	//if(inet_aton(dst_ip,iph->saddr)==0) printf("Invalid input address to inet_aton.\n");
+    if( (ret = inet_aton(myip, &(source.sin_addr))) == 0) {
       printf("invalid rtr ip\n");
     }
     iph->saddr = source.sin_addr.s_addr;
     printf("checkpoint ttl.3, iph->saddr %.8x\n", iph->saddr);
-    iph->tot_len = iphdrlen + sizeof(struct icmphdr) +iphdrlen + 8;
+    iph->tot_len = htons(iphdrlen + sizeof(struct icmphdr) +iphdrlen + 8);
     iph->protocol = 1;
     printf("checkpoint ttl.4\n");
     unsigned short cksum = calc_ip_checksum(packetOut);
@@ -467,9 +477,7 @@ void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size){
     unsigned short iphdrlen = iph->ihl * 4;
     struct icmphdr *icmph = (struct icmphdr *)(packetOut + iphdrlen  + sizeof(struct ethhdr));
     icmph->type = ICMP_TIME_EXCEEDED;
-    icmph->code = ICMP_EXC_TTL;
-    unsigned short cksum = calc_icmp_checksum(packetOut,packet_size);
-    icmph->checksum = htons(cksum);
+    icmph->code = ICMP_NET_UNREACH;
 }
 
 
