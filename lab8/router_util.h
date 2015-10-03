@@ -12,7 +12,33 @@
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <net/ethernet.h>
 #include <linux/sockios.h>
+
+
+#define ARP_CACHE       "/proc/net/arp"
+#define ARP_STRING_LEN  1023
+#define ARP_BUFFER_LEN  (ARP_STRING_LEN + 1)
+
+/**
+ * This structures contains the arp table details:
+ * 1. IP Address
+ * 2. MAC Address
+ * 3. Ethernet Device
+ */
+typedef struct arptable{
+
+    struct sockaddr_in ip_addr;/* given IP               */
+    unsigned char hw_addr[ETH_ALEN];     /* stored Hw address   */
+    char arp_dev[50];                   /* device name   */
+    struct arptable *next;
+
+}arp_table;
+
+
+arp_table *arp_tbl_list;
+int arp_table_size;
+
 
 typedef enum {
 	// Routing options
@@ -31,6 +57,20 @@ typedef enum {
 
 
 /**
+ * This method reads the arp entries from /proc/net/arp
+ * file and stores the result in "arptable" data structure.
+ * Returns -1: any failure occured
+ * Return 0: success
+*/
+int read_arp_cache();
+
+/**
+ * This method prints the ARP table maintained as
+ * a single linked list of struct arptable
+*/
+void printArpT();
+
+/**
  * This function takes two MAC addresses and compares
  * them by each character
  * Returns 0: if each charater of 8 bits is same
@@ -45,10 +85,13 @@ int cmp_mac_addr(unsigned char *,unsigned char *);
 struct sockaddr getLocalMac(char *);
 
 /**
- * This function takes the IP address of remote host and device name of
- * the interface to which the remote is connected. It returns the
- * corresponding MAC address of the remote host from ARP table
+ * This function takes the IP address of remote host as 1st argument
+ * and device name of the interface to which the remote is connected
+ * as the 2nd argument. It assigns the
+ * corresponding MAC address of the remote host from ARP table to
+ * the 3rd argument.
  */
+int getMACfromIP_new(struct sockaddr_in, char *, unsigned char* );
 struct arpreq getMACfromIP(char *, char *);
 
 /**
@@ -61,7 +104,7 @@ void updateIPHeader(u_char *);
  * This function takes the Ethernet header and updates the corresponding
  * source and destination MAC address
  */
-void updateEtherHeader(struct sockaddr *, struct sockaddr *, struct ethhdr *);
+void updateEtherHeader(struct sockaddr *, unsigned char *, struct ethhdr *);
 
 /**
  * This function is not used anymore

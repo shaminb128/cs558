@@ -43,7 +43,9 @@ int main (int argc, char** argv) {
 	int ret = 0;						// Return val
 
 	ret = createRT();
-
+	ret = read_arp_cache();
+	//fprintf(stdout, "Read cache returned : %d\n", ret);
+    //printArpT();
 	/* Scan devices */
 	printf("Scanning available devices ... ");
 	if ( (ret = pcap_findalldevs(&device_list, err)) != 0 ) {
