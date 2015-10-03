@@ -1,7 +1,7 @@
 /**
  * CS558L Lab8
  */
-
+#include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h> // for exit()
 #include <string.h> //for memset
@@ -88,8 +88,10 @@ struct sockaddr getLocalMac(char *iface) {
     int fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
     strcpy(s.ifr_name, iface);
     if (0 == ioctl(fd, SIOCGIFHWADDR, &s)) {
+        close(fd);
         return s.ifr_hwaddr;
   	}
+    close(fd);
   	fprintf(stderr, "getLocalMac: ERROR: getLocalMac(): ioctl() returns negative value\n");
   	return s.ifr_hwaddr;
 }
@@ -104,13 +106,18 @@ int getMACfromIP_new(struct sockaddr_in ip, char *iface, unsigned char* hwaddr){
         //printf("IP: %s, HwAddr: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x, Device: %s\n", inet_ntoa(pointer->ip_addr.sin_addr), pointer->hw_addr[0],pointer->hw_addr[1], pointer->hw_addr[2], pointer->hw_addr[3], pointer->hw_addr[4], pointer->hw_addr[5], pointer->arp_dev);
         if((strlen(pointer->arp_dev) != 0) && (ip.sin_addr.s_addr == pointer->ip_addr.sin_addr.s_addr)){
             //printf("Match found\n");
-            for (i = 0; i < 6 ; i++)
-                hwaddr[i] = pointer->hw_addr[i];
+            //for (i = 0; i < 6 ; i++)
+                //hwaddr[i] = pointer->hw_addr[i];
+          memcpy(hwaddr, pointer->hw_addr, ETH_ALEN);
             break;
         }
         pointer = pointer->next;
     }
-
+    if (pointer){
+      return 0;
+    }
+    fprintf(stderr, "getMACfromIP_new: arp lookup error, cannot find mac addr\n");
+    return -1;
 }
 
 int getIPfromIface(char* iface, char* ipstr) {
@@ -157,31 +164,33 @@ void updateIPHeader(u_char *pkt){
 }
 
 // update Ethernet address with new MAC
-void updateEtherHeader(struct sockaddr *sourceAddr, unsigned char *ptrD, struct ethhdr *eth){
-    unsigned char *ptrS = (unsigned char *) sourceAddr->sa_data;
+void updateEtherHeader(unsigned char* ptrS, unsigned char *ptrD, struct ethhdr *eth){
+  memcpy(eth->h_source, ptrS, ETH_ALEN);
+  memcpy(eth->h_dest, ptrD, ETH_ALEN);
+//    unsigned char *ptrS = (unsigned char *) sourceAddr->sa_data;
     //unsigned char *ptrD = (unsigned char *) destAddr->sa_data;
     //printf("Original D MAC : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
-    int i;
-    for (i = 0; i < 6 ; i++){
-        eth->h_dest[i] = ptrD[i];
-        eth->h_source[i] = ptrS[i];
-    }
+//    int i;
+//    for (i = 0; i < 6 ; i++){
+//        eth->h_dest[i] = ptrD[i];
+//        eth->h_source[i] = ptrS[i];
+//    }
     //printf("Changed D MAC : %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", eth->h_dest[0], eth->h_dest[1], eth->h_dest[2], eth->h_dest[3], eth->h_dest[4], eth->h_dest[5]);
 
 }
 
 
-int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
+int routing_opt(const u_char* packetIn, char* myIpAddr, unsigned char* my_mac) {
 	struct ethhdr *eth = (struct ethhdr *)packetIn;
 	struct iphdr* iph= (struct iphdr*)(packetIn + sizeof(struct ethhdr));
 	int iphlen = iph->ihl * 4;
 	struct sockaddr_in dest;            //this will contain myIpAddr
-	struct sockaddr mac_addr;
+	//struct sockaddr mac_addr;
 	memset(&dest, 0, sizeof(dest));
-	memset(&mac_addr, 0, sizeof(mac_addr));
-	mac_addr = getLocalMac(iface);
-    unsigned char *pkt_mac = (unsigned char *)eth->h_source;
-	unsigned char *my_mac = (unsigned char *) mac_addr.sa_data;
+	//memset(&mac_addr, 0, sizeof(mac_addr));
+	//mac_addr = getLocalMac(iface);
+  unsigned char *pkt_mac = (unsigned char *)eth->h_source;
+	//unsigned char *my_mac = (unsigned char *) mac_addr.sa_data;
 	int ret = 0;
   	if( (ret = inet_aton(myIpAddr, &(dest.sin_addr))) == 0) {
   		return P_NOT_YET_IMPLEMENTED;
@@ -200,12 +209,15 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
 
   	if (dest.sin_addr.s_addr == iph->daddr) {
   		// This packet targets at this node
-  		struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
-  		if (icmph->type == ICMP_ECHO) {
-  			return P_ICMPECHOREPLY;
-  		} else {
-  			return P_NOT_YET_IMPLEMENTED;
-  		}
+      struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
+      if (iph->ttl == 1 && iph->protocol == 17) {
+        // traceroute packet
+        return P_TIMEOUT;
+      } else if (icmph->type == ICMP_ECHO) {
+        return P_ICMPECHOREPLY;
+      } else {
+        return P_NOT_YET_IMPLEMENTED;
+      }
   	} else {
   		// This packet targets at some other node
   		if (iph->ttl <= 1) {
@@ -219,15 +231,17 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, char* iface) {
 
 
 
-int modify_packet_new(u_char* packetIn, char* iface, int size) {
+int modify_packet_new(u_char* packetIn, char* iface, int size, struct localIface* ifaces, int iface_cnt, int* handler_idx) {
 	struct ethhdr *eth = (struct ethhdr *)packetIn;
     struct iphdr *iph = (struct iphdr*)(packetIn + sizeof(struct ethhdr));
     struct sockaddr_in source;
     struct sockaddr_in dest;
     struct arpreq  arequest;
     unsigned char* mac_d;
+    unsigned char* mac_s;
     struct sockaddr addr;
     char gw[50];
+    int i;
 //    rt_table* p = NULL;
 	rt_table p;
     int ret = 0;
@@ -251,23 +265,41 @@ int modify_packet_new(u_char* packetIn, char* iface, int size) {
 
   	// Now we have the routing table entry and is ready to modify packet
   	(iph->ttl)--;
-    printf("Dest IP: %s, Device : %s\n", inet_ntoa(dest.sin_addr), p.rt_dev);
+ //   printf("Dest IP: %s, Device : %s\n", inet_ntoa(dest.sin_addr), p.rt_dev);
   	if (ret == P_LOCAL) {
-        printf("Local Routing \n");
+ //       printf("Local Routing \n");
         //check if destination is me(rtr3), then get LocalMac
         getMACfromIP_new(dest, p.rt_dev, mac_d);
         //arequest = getMACfromIP(inet_ntoa(dest.sin_addr), p.rt_dev);
-        addr = getLocalMac(p.rt_dev);
+        //addr = getLocalMac(p.rt_dev);
+        for (i = 0; i < iface_cnt; i++) {
+          if (strcmp(p.rt_dev, ifaces[i].iface) == 0) {
+            mac_s = ifaces[i].mac;
+            //handler = ifaces[i].handler;
+            *handler_idx = i;
+            //memcpy(handler, ifaces[i].handler, sizeof(pcap_t*));
+            break;
+          }
+        }
         strcpy(iface, p.rt_dev);
-        updateEtherHeader(&addr, mac_d, eth);
+        updateEtherHeader(mac_s, mac_d, eth);
   	} else if (ret == P_REMOTE) {
-  	    printf("Remote Routing \n");
+//  	    printf("Remote Routing \n");
         //inet_ntop(AF_INET, &(p.rt_gateway.sin_addr), gw, 50);
         getMACfromIP_new(p.rt_gateway, p.rt_dev, mac_d);
         //arequest = getMACfromIP(gw, p.rt_dev);
-		addr = getLocalMac(p.rt_dev);
-		strcpy(iface, p.rt_dev);
-        updateEtherHeader(&addr, mac_d, eth);
+		    //addr = getLocalMac(p.rt_dev);
+        for (i = 0; i < iface_cnt; i++) {
+          if (strcmp(p.rt_dev, ifaces[i].iface) == 0) {
+            mac_s = ifaces[i].mac;
+            //handler = ifaces[i].handler;
+            *handler_idx = i;
+            //memcpy(handler, ifaces[i].handler, sizeof(pcap_t*));
+            break;
+          }
+        }
+		    strcpy(iface, p.rt_dev);
+        updateEtherHeader(mac_s, mac_d, eth);
   	} else {
   		return -1; // not supposed to come to this point
   	}
@@ -325,33 +357,21 @@ int generate_icmp_echo_reply_packet(u_char* packetIn, u_char* packetOut, char* i
 int generate_icmp_time_exceed_packet(u_char* packetIn, u_char* packetOut, char* myip, int size) {
 	//print_packet_handler(stdout, packetIn, size);
 	struct iphdr *iph = (struct iphdr *)(packetIn  + sizeof(struct ethhdr));
-    unsigned short iphdrlen = iph->ihl * 4;
+  unsigned short iphdrlen = iph->ihl * 4;
 	int new_packet_size = sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen+8;
-    //packetOut = malloc(new_packet_size);
-    //memset(packetOut, 0, new_packet_size);
-//  printf("checkpoint 0,addr raw, iph->saddr = %x, ip->daddr = %x\n", iph->saddr, iph->daddr);
-//  printf("checkpoint 1\n");
-   // Copy the ethernet header and ipheader from udp packet to packetOut
-	memcpy(packetOut,packetIn, sizeof(struct ethhdr)+iphdrlen);
-    // Get the ipheader and 64bits of payload of udp packet to the end of packetout
-//  printf("checkpoint 2\n");
-	//memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
-//  printf("checkpoint 3\n");
-    eth_pkt_hdr(packetOut);
-//    printf("checkpoint 4\n");
-    ip_pkt_ttl0_hdr(packetOut,myip);
-//    printf("checkpoint 5\n");
-    icmp_pkt_ttl0_hdr(packetOut, new_packet_size);
-//    printf("checkpoint 6\n");
-    //copying original IP header as payload
-    //memcpy(packetOut+sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr),packetOut+sizeof(struct ethhdr),iphdrlen);
-    memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr),packetIn + sizeof(struct ethhdr) , iphdrlen+8);
-    //copying 8 Byte
-    memcpy(packetOut+sizeof(struct ethhdr)+iphdrlen+sizeof(struct icmphdr)+iphdrlen,packetIn+sizeof(struct ethhdr)+iphdrlen,8);
 
-    struct icmphdr* icmph = (struct icmphdr*)(packetOut + sizeof(struct ethhdr)+iphdrlen);
-    unsigned short cksum = calc_icmp_checksum(packetOut, new_packet_size);
-    icmph->checksum = htons(cksum);
+	memcpy(packetOut,packetIn, sizeof(struct ethhdr)+iphdrlen);
+
+  eth_pkt_hdr(packetOut);
+  icmp_pkt_ttl0_hdr(packetOut, new_packet_size, myip);
+  ip_pkt_ttl0_hdr(packetOut,myip);
+
+  memcpy(packetOut + sizeof(struct ethhdr) + iphdrlen + sizeof(struct icmphdr), packetIn + sizeof(struct ethhdr), iphdrlen + 8);
+
+
+  struct icmphdr* icmph = (struct icmphdr*)(packetOut + sizeof(struct ethhdr)+iphdrlen);
+  unsigned short cksum = calc_icmp_checksum(packetOut, new_packet_size);
+  icmph->checksum = htons(cksum);
 	return new_packet_size;
 }
 //supporting functions for ICMP replies
@@ -423,12 +443,22 @@ void ip_pkt_ttl0_hdr(u_char *packetOut, char* myip){
     iph->check = htons(cksum);
 }
 
-void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size){
+void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size, char* myip){
     struct iphdr *iph = (struct iphdr *)(packetOut  + sizeof(struct ethhdr));
     unsigned short iphdrlen = iph->ihl * 4;
     struct icmphdr *icmph = (struct icmphdr *)(packetOut + iphdrlen  + sizeof(struct ethhdr));
-    icmph->type = ICMP_TIME_EXCEEDED;
-    icmph->code = ICMP_NET_UNREACH;
+    struct sockaddr_in local;
+    if (inet_aton(myip, &(local.sin_addr)) == 0) {
+        fprintf(stderr, "icmp_pkt_tt10_hdr: cannot parse myip\n");
+        return;
+    }
+    if (local.sin_addr.s_addr == iph->daddr) {
+        icmph->type = ICMP_DEST_UNREACH;
+        icmph->code = ICMP_PORT_UNREACH;
+    } else {
+        icmph->type = ICMP_TIME_EXCEEDED;
+        icmph->code = ICMP_NET_UNREACH;
+    }
 }
 
 //struct arpreq getMACfromIP(char *ip, char *iface){

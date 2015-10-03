@@ -6,6 +6,7 @@
 #ifndef _ROUTER_UTIL_H_
 #define _ROUTER_UTIL_H_
 
+#include <pcap.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
@@ -35,6 +36,11 @@ typedef struct arptable{
 
 }arp_table;
 
+typedef struct localIface {
+	char iface[20];
+	unsigned char mac[ETH_ALEN];
+	pcap_t * handler;
+}localIface_t;
 
 arp_table *arp_tbl_list;
 int arp_table_size;
@@ -104,7 +110,7 @@ void updateIPHeader(u_char *);
  * This function takes the Ethernet header and updates the corresponding
  * source and destination MAC address
  */
-void updateEtherHeader(struct sockaddr *, unsigned char *, struct ethhdr *);
+void updateEtherHeader(unsigned char*, unsigned char *, struct ethhdr *);
 
 /**
  * This function is not used anymore
@@ -123,7 +129,7 @@ int getIPfromIface(char*, char*);
  * 		2.1 TTL = 1 -> return P_TIMEOUT
  * 		2.2 TTL != 1 -> return P_FORWARD
  */
-int routing_opt(const u_char*, char*, char*);
+int routing_opt(const u_char*, char*, unsigned char*);
 
 /**
  * This function is a response to P_FORWARD, returned by routing_opt()
@@ -131,7 +137,7 @@ int routing_opt(const u_char*, char*, char*);
  * the packet and device name (second argument), and returns the size of
  * packet
  */
-int modify_packet_new(u_char*, char*, int);
+int modify_packet_new(u_char*, char*, int, struct localIface*, int, int*);
 
 /**
  * This function takes in a iphdr and find the routing table entry we are
@@ -167,7 +173,7 @@ void ip_pkt_hdr(u_char *packetOut);
 void icmp_pkt_hdr(u_char *packetOut, int size);
 int update_size_icmp_pkt(u_char *packetIn, int packet_size);
 void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface);
-void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size);
+void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size, char* myip);
 
 
 #endif

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h> // for exit()
 #include <string.h> //for memset
+#include <unistd.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h> // for inet_ntoa()
@@ -19,8 +20,12 @@
 
 
 typedef struct sniff {
+	int tid;
 	char dev_name[50];
 	char dev_ip[20];
+	unsigned char dev_mac[ETH_ALEN];
+	int iface_cnt;
+	struct localIface* ifaces;
     pcap_t *handler_t;
 	FILE* logfile;
 
@@ -69,13 +74,29 @@ int main (int argc, char** argv) {
 		}
 	}
 	struct sniff* sniff_args = (struct sniff*)malloc( sizeof(struct sniff) * count);
+	struct localIface* ifaces = (struct localIface*)malloc( sizeof(struct localIface) * count);
 	printf("Here is a list of ethernet devices we try to listen:\n");
 	for (i = 0; i < count; i++) {
+		sniff_args[i].tid = i;
+		sniff_args[i].iface_cnt = count;
+
 		strcpy(sniff_args[i].dev_name, devices[i]);
+		strcpy(ifaces[i].iface, devices[i]);
+
 		strcpy(sniff_args[i].dev_ip, device_ips[i]);
+
+		struct sockaddr mac_addr;
+        mac_addr = getLocalMac(sniff_args[i].dev_name);
+        unsigned char* my_mac = (unsigned char*)mac_addr.sa_data;
+        memcpy(sniff_args[i].dev_mac, my_mac, ETH_ALEN);
+        memcpy(ifaces[i].mac, my_mac, ETH_ALEN);
+
+        sniff_args[i].ifaces = ifaces;
 	}
 	for(i = 0; i < count; i++) {
-		printf("%d. %s\t-\t%s\n", i, sniff_args[i].dev_name, sniff_args[i].dev_ip);
+		printf("%d. %s\t-\t%s-\t%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n", i, sniff_args[i].dev_name, sniff_args[i].dev_ip, 
+			sniff_args[i].dev_mac[0], sniff_args[i].dev_mac[1], sniff_args[i].dev_mac[2], 
+			sniff_args[i].dev_mac[3], sniff_args[i].dev_mac[4], sniff_args[i].dev_mac[5]);
 	}
 
 	pthread_t* threads = (pthread_t*)malloc( sizeof(pthread_t) * count );
@@ -117,7 +138,8 @@ void sniffer(void* param) {
 		exit(1);
 	}
     data->handler_t = pcap_handle;
-	pcap_loop(pcap_handle , 350 , process_packet , (u_char*)data );	// -1 means an infinite loop
+    (data->ifaces)[data->tid].handler = pcap_handle;
+	pcap_loop(pcap_handle , -1 , process_packet , (u_char*)data );	// -1 means an infinite loop
 
 //	printf("thread %s: House Keeping\n", data->dev_name);
 //	fclose(data->logfile);
@@ -127,7 +149,7 @@ void sniffer(void* param) {
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 	struct sniff* data= (struct sniff*)args;
 	FILE* logfile = data->logfile;
-	pcap_t* handle = NULL;
+	pcap_t* handle;
 	char err[128];
 	int size = (int) header->len;
 	char iface[10];
@@ -149,29 +171,32 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 //		fprintf(stderr, "thread %s: IP not supported. iph->saddr test = %.8x, iph->daddr test = %.8x\n", data->dev_name, iph->saddr & 0x000000ff, iph->daddr & 0x000000ff);
 		return;
 	}
-	ret = routing_opt(packet, data->dev_ip, data->dev_name);
+	ret = routing_opt(packet, data->dev_ip, data->dev_mac);
 //	fprintf(stdout, "thread %s: routing_opt = %d\n", data->dev_name, ret);
+	int handle_idx;
+
 	switch(ret) {
 		case P_FORWARD:
 //			fprintf(stdout, "thread %s: Ready to modify the packet for forwarding...\n", data->dev_name);
 			memcpy(packetOut, packet, size);
-			if ( (packetOutLen = modify_packet_new(packetOut, iface, size)) <= 0 ) {
+			if ( (packetOutLen = modify_packet_new(packetOut, iface, size, data->ifaces, data->iface_cnt, &handle_idx)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to modify packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
+//			fprintf(stdout, "thread %s: handle index: %d, iface: %s\n", data->dev_name, handle_idx, (data->ifaces)[handle_idx].iface);
 //			fprintf(stdout, "thread %s: packet modified, should be sent to %s\n", data->dev_name, iface);
 			// printf("\nPACKET MODIFIED: size: %d, This packet is going to be sent to %s\nHere are the details:\n", packetOutLen, iface);
 //			print_packet_handler(logfile, packetOut, packetOutLen);
 			if (packetOutLen > 0){
-				if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 100, err)) == NULL) {
-					fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
-					exit(1);
-				}
-				if ((ret = pcap_inject(handle, packetOut, packetOutLen)) < 0){
+				//if ( (handle = pcap_open_live(iface, BUFSIZ, 1, 5, err)) == NULL) {
+				//	fprintf(stderr, "thread %s: fail to open device %s\n", data->dev_name, iface);
+				//	exit(1);
+				//}
+				if ((ret = pcap_inject((data->ifaces)[handle_idx].handler, packetOut, packetOutLen)) < 0){
 					fprintf(stderr, "thread %s: fail to inject packet %s\n", data->dev_name, iface);
 					exit(1);
 				}
 //				fprintf(stdout, "thread %s: successfully injected packet to %s, byte count: %d\n", data->dev_name, iface, ret);
-				pcap_close(handle);
+				//pcap_close(handle);
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
 			}
