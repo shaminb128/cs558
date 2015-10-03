@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h> // for exit()
 #include <string.h> //for memset
+#include <unistd.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -41,6 +42,7 @@ void print_tcp_packet(const u_char *  , int);
 void print_udp_packet(const u_char * , int);
 void print_icmp_packet(const u_char * , int);
 void PrintData (const u_char * , int);
+int hostname_to_ip(char * hostname , char* ip);
 
 /* Global Variables */
 FILE* logfile;
@@ -104,7 +106,7 @@ int main (int argc, char** argv) {
 	}
 
 	//Put the device in sniff loop
-  	pcap_loop(pcap_handle , 10 , process_packet , NULL);	// -1 means an infinite loop
+  	pcap_loop(pcap_handle , 50 , process_packet , NULL);	// -1 means an infinite loop
 
 	fclose(logfile);
 	return 0;

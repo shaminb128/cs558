@@ -6,13 +6,45 @@
 #ifndef _ROUTER_UTIL_H_
 #define _ROUTER_UTIL_H_
 
+#include <pcap.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <net/if_arp.h>
 #include <net/if.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <net/ethernet.h>
 #include <linux/sockios.h>
+
+
+#define ARP_CACHE       "/proc/net/arp"
+#define ARP_STRING_LEN  1023
+#define ARP_BUFFER_LEN  (ARP_STRING_LEN + 1)
+
+/**
+ * This structures contains the arp table details:
+ * 1. IP Address
+ * 2. MAC Address
+ * 3. Ethernet Device
+ */
+typedef struct arptable{
+
+    struct sockaddr_in ip_addr;/* given IP               */
+    unsigned char hw_addr[ETH_ALEN];     /* stored Hw address   */
+    char arp_dev[50];                   /* device name   */
+    struct arptable *next;
+
+}arp_table;
+
+typedef struct localIface {
+	char iface[20];
+	unsigned char mac[ETH_ALEN];
+	pcap_t * handler;
+}localIface_t;
+
+arp_table *arp_tbl_list;
+int arp_table_size;
+
 
 typedef enum {
 	// Routing options
@@ -31,6 +63,20 @@ typedef enum {
 
 
 /**
+ * This method reads the arp entries from /proc/net/arp
+ * file and stores the result in "arptable" data structure.
+ * Returns -1: any failure occured
+ * Return 0: success
+*/
+int read_arp_cache();
+
+/**
+ * This method prints the ARP table maintained as
+ * a single linked list of struct arptable
+*/
+void printArpT();
+
+/**
  * This function takes two MAC addresses and compares
  * them by each character
  * Returns 0: if each charater of 8 bits is same
@@ -45,10 +91,13 @@ int cmp_mac_addr(unsigned char *,unsigned char *);
 struct sockaddr getLocalMac(char *);
 
 /**
- * This function takes the IP address of remote host and device name of
- * the interface to which the remote is connected. It returns the
- * corresponding MAC address of the remote host from ARP table
+ * This function takes the IP address of remote host as 1st argument
+ * and device name of the interface to which the remote is connected
+ * as the 2nd argument. It assigns the
+ * corresponding MAC address of the remote host from ARP table to
+ * the 3rd argument.
  */
+int getMACfromIP_new(struct sockaddr_in, char *, unsigned char* );
 struct arpreq getMACfromIP(char *, char *);
 
 /**
@@ -61,7 +110,7 @@ void updateIPHeader(u_char *);
  * This function takes the Ethernet header and updates the corresponding
  * source and destination MAC address
  */
-void updateEtherHeader(struct sockaddr *, struct sockaddr *, struct ethhdr *);
+void updateEtherHeader(unsigned char*, unsigned char *, struct ethhdr *);
 
 /**
  * This function is not used anymore
@@ -80,7 +129,7 @@ int getIPfromIface(char*, char*);
  * 		2.1 TTL = 1 -> return P_TIMEOUT
  * 		2.2 TTL != 1 -> return P_FORWARD
  */
-int routing_opt(const u_char*, char*, char*);
+int routing_opt(const u_char*, char*, unsigned char*);
 
 /**
  * This function is a response to P_FORWARD, returned by routing_opt()
@@ -88,7 +137,7 @@ int routing_opt(const u_char*, char*, char*);
  * the packet and device name (second argument), and returns the size of
  * packet
  */
-int modify_packet_new(u_char*, char*, int);
+int modify_packet_new(u_char*, char*, int, struct localIface*, int, int*);
 
 /**
  * This function takes in a iphdr and find the routing table entry we are
@@ -124,7 +173,7 @@ void ip_pkt_hdr(u_char *packetOut);
 void icmp_pkt_hdr(u_char *packetOut, int size);
 int update_size_icmp_pkt(u_char *packetIn, int packet_size);
 void ip_pkt_ttl0_hdr(u_char *packetOut, char* Interface);
-void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size);
+void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size, char* myip);
 
 
 #endif

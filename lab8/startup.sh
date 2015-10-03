@@ -1,3 +1,5 @@
+sudo iptables -A OUTPUT -p icmp --icmp-type destination-unreachable -j DROP
+sudo /sbin/iptables-save
 ping -c 2 node4
 ping -c 2 node3
 ping -c 2 rtr1
