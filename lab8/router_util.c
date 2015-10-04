@@ -207,7 +207,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, unsigned char* my_mac) {
   	}
 
 //fprintf(stdout, "myipaddr: %.8x; iph.daddr: %.8x\n", dest.sin_addr.s_addr, iph->daddr);
-  	if (dest.sin_addr.s_addr == iph->daddr) {
+  	if (dest.sin_addr.s_addr == iph->daddr || iph->daddr == 0x0102010a) {
   		// This packet targets at this node
       struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
       if (iph->ttl == 1 && iph->protocol == 17) {
@@ -452,7 +452,7 @@ void icmp_pkt_ttl0_hdr(u_char *packetOut, int packet_size, char* myip){
         fprintf(stderr, "icmp_pkt_tt10_hdr: cannot parse myip\n");
         return;
     }
-    if (local.sin_addr.s_addr == iph->daddr) {
+    if (local.sin_addr.s_addr == iph->daddr || iph->daddr == 0x0102010a) {
         icmph->type = ICMP_DEST_UNREACH;
         icmph->code = ICMP_PORT_UNREACH;
     } else {
