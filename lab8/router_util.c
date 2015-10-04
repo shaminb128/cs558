@@ -206,7 +206,7 @@ int routing_opt(const u_char* packetIn, char* myIpAddr, unsigned char* my_mac) {
         return P_DO_NOTHING;
   	}
 
-
+//fprintf(stdout, "myipaddr: %.8x; iph.daddr: %.8x\n", dest.sin_addr.s_addr, iph->daddr);
   	if (dest.sin_addr.s_addr == iph->daddr) {
   		// This packet targets at this node
       struct icmphdr* icmph = (struct icmphdr*)(packetIn + sizeof(struct ethhdr) + iphlen);
