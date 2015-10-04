@@ -8,5 +8,7 @@ arp -a
 sudo route del -net 10.1.2.0 netmask 255.255.255.0 dev eth4
 sudo route del -net 10.10.3.0 netmask 255.255.255.0 dev eth3
 sudo route del -net 10.10.1.0 netmask 255.255.255.0 dev eth0
+sudo iptables -A OUTPUT -p icmp --icmp-type destination-unreachable -j DROP
+sudo /sbin/iptables-save
 make router
 sudo ./router
