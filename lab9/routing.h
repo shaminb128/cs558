@@ -46,7 +46,7 @@ int rt_tbl_size;
 void createRT();
 void printRT(uint64_t *);
 
-/* takes in packet, return r_op */
+/* takes in packet, return r_op; */
 int routing_opt(u_char* packet);
 
 /* takes in packet, return routing table entry */
