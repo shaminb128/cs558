@@ -12,4 +12,8 @@
  u_int16_t rthdr_chk_gen(struct rthdr*);
  u_int16_t packet_chk_gen(u_char* packet, int size);
 
+ /* test packet generation */
+ int generate_random_packet(u_char* packetOut, int size);
+ int generate_route_on_packet(u_char* packetOut, int size, int type);
+
  #endif

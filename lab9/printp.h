@@ -9,11 +9,11 @@
 
  #include "packet.h"
 
- void fprintp(FILE*, const u_char*, int);
+ void fprintp(FILE*, u_char*, int);
  void print_rthdr(FILE*, struct rthdr*);
- void print_ctl_packet(FIlE*, const u_char*, int);
- void print_ur_packet(FILE*, const u_char*, int);
- void print_rl_packet(FILE*, const u_char*, int);
+ void print_ctl_packet(FILE*, u_char*, int);
+ void print_ur_packet(FILE*, u_char*, int);
+ void print_rl_packet(FILE*, u_char*, int);
  void print_data(FILE*, const u_char*, int);
 
  #endif

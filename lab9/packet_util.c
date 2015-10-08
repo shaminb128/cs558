@@ -3,8 +3,12 @@
  *
  * Packet related data structures and methods
  */
-
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+ #include <netinet/in.h>
  #include "packet_util.h"
+ #include "printp.h"
 
  u_int16_t rthdr_chk_gen(struct rthdr* rth) {
  	unsigned int sum = 0;
@@ -32,9 +36,72 @@
 		sum += *(ptr+1);
 	}
 
-	
 	sum = (sum & 0xffff) + ((sum >> 16) & 0xffff);
-	// Do this once more to prevent the carry outs from causing another unhandled carry out
 	sum = (sum & 0xffff) + ((sum >> 16) & 0xffff);
 	return (u_short)(~sum);
  }
+
+int generate_random_packet(u_char* packetOut, int size) {
+	memset(packetOut, 0, sizeof(u_char) * PACKET_BUF_SIZE);
+	sprintf((char*)packetOut, "here is a random packet with size %d*", size);
+	int len = strlen((const char*)packetOut);
+	int i;
+	for (i = len; i < size; i++) {
+		packetOut[i] = (u_char) (rand() & 0x000000ff);
+	}
+	return size;
+}
+int generate_route_on_packet(u_char* packetOut, int size, int type) {
+	if (size < MIN_APP_PKT_LEN) {
+		fprintf(stderr, "ERROR: size should > 60\n");
+		return -1;
+	}
+	memset(packetOut, 0, sizeof(u_char) * PACKET_BUF_SIZE);
+	struct rthdr* rth = (struct rthdr*)packetOut;
+	rth->saddr = (u_int16_t)(rand() & 0xffff);
+	rth->daddr = (u_int16_t)(rand() & 0xffff);
+	rth->ttl = (u_int8_t)(rand() & 0xff);
+	rth->protocol = (u_int8_t)type;
+	rth->size = (u_int16_t)size;
+	rth->check = htons(rthdr_chk_gen(rth));
+	//memcpy(&rth, packetOut, sizeof(struct rthdr));
+	//print_data(stdout, packetOut, size);
+	int i, len;
+
+	switch(type) {
+		case ROUTE_ON_CONTROL:
+			fprintf(stdout, "WARNING: generate_route_on_packet: does not support ROUTE_ON_CONTROL\n");
+			return -1;
+		case ROUTE_ON_UNRELIABLE:
+			printf("generating unreliable packets...\n");
+			len = sizeof(struct rthdr) + sizeof(struct urhdr);
+			struct urhdr* urh = (struct urhdr*)(packetOut + sizeof(struct rthdr));
+			urh->port = (u_int8_t)(rand() & 0xff);
+			//memcpy(&urh, packetOut + sizeof(struct rthdr), sizeof(struct urhdr));
+			//print_data(stdout, packetOut, size);
+			for (i = len; i < size; i++) {
+				packetOut[i] = (u_char) (rand() & 0x000000ff);
+			}
+			//struct urhdr* urhptr = (struct urhdr*)(packetOut + sizeof(struct rthdr));
+			urh->check = htons(packet_chk_gen(packetOut, size));
+			break;
+		case ROUTE_ON_RELIABLE:
+		printf("generating reliable packets...\n");
+			len = sizeof(struct rthdr) + sizeof(struct rlhdr);
+			struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
+			rlh->port = (u_int8_t)(rand() & 0xff);
+			rlh->seq = (u_int16_t)(rand() & 0xffff);
+			//memcpy(&rlh, packetOut + sizeof(struct rthdr), sizeof(struct rlhdr));
+			//print_data(stdout, packetOut, size);
+			for (i = len; i < size; i++) {
+				packetOut[i] = (u_char) (rand() & 0x000000ff);
+			}
+			//struct rlhdr* rlhptr = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
+			rlh->check = htons(packet_chk_gen(packetOut, size));
+			break;
+		default:
+			fprintf(stderr, "ERROR: protocol not supported\n");
+			return -1;
+	}
+	return size;
+}

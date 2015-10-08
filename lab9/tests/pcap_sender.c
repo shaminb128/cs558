@@ -4,7 +4,6 @@
 #include <string.h> //for memset
 #include <unistd.h>
 #include <time.h>
-#include <stdlib.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
