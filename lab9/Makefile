@@ -17,5 +17,5 @@ packet_test.o: packet_test.c packet.h packet_util.h printp.h routing.h
 	gcc -g -c -Wal packet_test.c
 
 clean:
-	rm -rf *.o *.log router routing
+	rm -rf *.o *.log router routing packet_test
 	
