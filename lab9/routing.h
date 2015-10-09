@@ -42,5 +42,5 @@ int routing_opt(u_char*, u_int16_t);
 uint8_t rt_lookup(uint16_t);
 
 /* takes in packet, modify it for forwarding */
-int modify_packet(u_char* packet);
+void modify_packet(u_char* packet);
 #endif

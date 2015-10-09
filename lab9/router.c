@@ -153,17 +153,15 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	switch(ret) {
 		case P_FORWARD:
 			memcpy(packetOut, packet, size);
-			/*if ( (packetOutLen = modify_packet_new(packetOut, iface, size, data->ifaces, data->iface_cnt, &handle_idx)) <= 0 ) {
-				fprintf(stderr, "thread %s: fail to modify packet, with ret %d\n", data->dev_name, packetOutLen);
+			modify_packet(packetOut);
+			struct rthdr* rth = (struct rthdr*)packetOut;
+			int index = (int)rt_lookup(rth->daddr);
+			
+			if ((ret = pcap_inject((data->handler_list)[index], packetOut, size)) < 0){
+				fprintf(stderr, "thread %s: fail to inject packet to iface[%d]\n", data->tid, index);
+				exit(1);
 			}
-			if (packetOutLen > 0){
-				if ((ret = pcap_inject((data->ifaces)[handle_idx].handler, packetOut, packetOutLen)) < 0){
-					fprintf(stderr, "thread %s: fail to inject packet %s\n", data->dev_name, iface);
-					exit(1);
-				}
-				memset(packetOut, 0, ETH_DATA_LEN);
-				memset(iface, 0, 10);
-			}*/
+			memset(packetOut, 0, PACKET_BUF_SIZE);
 			break;
 		case P_APPRESPONSE:
 			

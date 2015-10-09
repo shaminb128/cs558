@@ -102,7 +102,7 @@ int generate_route_on_packet(u_char* packetOut, int size, int type) {
 	rth->daddr = (u_int16_t)(rand() & 0xffff);
 	rth->ttl = (u_int8_t)(rand() & 0xff);
 	rth->protocol = (u_int8_t)type;
-	rth->size = (u_int16_t)size;
+	rth->size = htons((u_int16_t)size);
 	rth->check = htons(rthdr_chk_gen(rth));
 	//memcpy(&rth, packetOut, sizeof(struct rthdr));
 	//print_data(stdout, packetOut, size);

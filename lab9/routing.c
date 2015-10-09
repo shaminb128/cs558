@@ -128,9 +128,10 @@ uint8_t rt_lookup(uint16_t dest) {
 }
 
 /* takes in packet, modify it for forwarding */
-int modify_packet(u_char* packet) {
-
-	return -1;
+void modify_packet(u_char* packet) {
+	struct rthdr* rth = (struct rthdr*)packet;
+	rth->ttl--;
+	rth->check = htons(rthdr_chk_gen(rth));
 }
 
 int generate_packet(u_char* packetOut, int size) {
