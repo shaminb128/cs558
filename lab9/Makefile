@@ -14,7 +14,7 @@ printp.o: printp.c packet.h printp.h packet_util.h
 packet_util.o: packet_util.c packet.h packet_util.h printp.h
 	gcc -g -c -Wall packet_util.c
 packet_test.o: packet_test.c packet.h packet_util.h printp.h routing.h
-	gcc -g -c -Wal packet_test.c
+	gcc -g -c -Wall packet_test.c
 
 clean:
 	rm -rf *.o *.log router routing packet_test

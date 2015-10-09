@@ -73,7 +73,7 @@ int main (int argc, char** argv) {
 		}
 	}
 	struct sniff* sniff_args = (struct sniff*)malloc( sizeof(struct sniff) * count );
-	pcap_t** handler_list[10];
+	pcap_t* handler_list[10];
 	//struct localIface* ifaces = (struct localIface*)malloc( sizeof(struct localIface) * count);
 	printf("Here is a list of ethernet devices we try to listen:\n");
 	for (i = 0; i < count; i++) {
@@ -124,14 +124,15 @@ void sniffer(void* param) {
 	}
     (data->myIface).handler = pcap_handle;
     (data->handler_list)[data->tid] = pcap_handle;
-	pcap_loop(pcap_handle , 5 , process_packet , (u_char*)data );	// -1 means an infinite loop
+    fprintf(stdout, "thread %d: START, iface information:\nDev %d, name: %s, assigned address: %04x\n",data->tid, data->tid, data->dev_name, (data->myIface).myaddr);
+	pcap_loop(pcap_handle , 1 , process_packet , (u_char*)data );	// -1 means an infinite loop
 	fclose(data->logfile);
 	pcap_close(pcap_handle);
 }
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 	struct sniff* data = (struct sniff*)args;
-	//fprintf(stdout, "thread %d: START, iface information:\nDev %d, name: %s, assigned address: %04x\n",data->tid, data->tid, data->dev_name, (data->myIface).myaddr);
+	
 	
 	FILE* logfile = data->logfile;
 	pcap_t* handle;
@@ -152,7 +153,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	switch(ret) {
 		case P_FORWARD:
 			memcpy(packetOut, packet, size);
-			/*if ( (packetOutLen = modify_packet_new(packetOut, iface, size, data->ifaces, data->iface_cnt, &handle_idx)) <= 0 ) {
+			if ( (packetOutLen = modify_packet_new(packetOut, iface, size, data->ifaces, data->iface_cnt, &handle_idx)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to modify packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
 			if (packetOutLen > 0){
@@ -162,7 +163,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 				}
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
-			}*/
+			}
 			break;
 		case P_APPRESPONSE:
 			
@@ -179,5 +180,6 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 		default:
 			break;
 	}
+	
 }
 
