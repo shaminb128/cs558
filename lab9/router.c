@@ -153,7 +153,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	switch(ret) {
 		case P_FORWARD:
 			memcpy(packetOut, packet, size);
-			if ( (packetOutLen = modify_packet_new(packetOut, iface, size, data->ifaces, data->iface_cnt, &handle_idx)) <= 0 ) {
+			/*if ( (packetOutLen = modify_packet_new(packetOut, iface, size, data->ifaces, data->iface_cnt, &handle_idx)) <= 0 ) {
 				fprintf(stderr, "thread %s: fail to modify packet, with ret %d\n", data->dev_name, packetOutLen);
 			}
 			if (packetOutLen > 0){
@@ -163,7 +163,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 				}
 				memset(packetOut, 0, ETH_DATA_LEN);
 				memset(iface, 0, 10);
-			}
+			}*/
 			break;
 		case P_APPRESPONSE:
 			
