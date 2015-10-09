@@ -40,7 +40,7 @@ void print_rthdr(FILE* logfile, struct rthdr* hdr) {
 	fprintf(logfile, "\t|-destination:        %04x\n", hdr->daddr);
 	fprintf(logfile, "\t|-ttl:                %d\n", (unsigned int)(hdr->ttl));
 	fprintf(logfile, "\t|-protocol:           %d\n", (unsigned int)(hdr->protocol));
-	fprintf(logfile, "\t|-size:               %d\n", (unsigned int)(hdr->size));
+	fprintf(logfile, "\t|-size:               %d\n", (unsigned int)ntohs((hdr->size)));
 	fprintf(logfile, "\t|-checksum:           %04x\n", ntohs(hdr->check));
 	fprintf(logfile, "checksum test: %04x\n", rthdr_chk_gen(hdr));
 	fprintf(logfile, "\n");
@@ -75,7 +75,7 @@ void print_rl_packet(FILE* logfile, u_char* packet, int size) {
 	struct rlhdr* rlh = (struct rlhdr*)(packet + sizeof(struct rthdr));
 	fprintf(logfile, "Reliable Protocol Header:\n");
 	fprintf(logfile, "\t|-port:              %d\n", (unsigned int)(rlh->port));
-	fprintf(logfile, "\t|-sequence number:   %d\n", (unsigned int)(rlh->seq));
+	fprintf(logfile, "\t|-sequence number:   %d\n", (unsigned int)ntohs((rlh->seq)));
 	fprintf(logfile, "\t|-checksum:          %04x\n", ntohs(rlh->check));
 	fprintf(logfile, "checksum test: %04x\n", packet_chk_gen(packet, size));
 	fprintf(logfile, "\n");

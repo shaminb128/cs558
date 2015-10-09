@@ -1,3 +1,9 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <netinet/in.h>
+
+#include "packet_util.h"
 #include "routing.h"
 #include "packet.h"
 
@@ -27,6 +33,34 @@ void printRT(uint64_t * rt_table)
     }
 
 }
+
+
+int routing_opt(u_char* packet, u_int16_t myaddr) {
+	struct rthdr* rth = (struct rthdr*) packet;
+	if (verify_rthdr_chk(rth) != 0) {
+		//printf("test check = %04x, packet check = %04x\n", rthdr_chk_gen(rth), ntohs(rth->check));
+		return P_ERRCHK;
+	}
+	if (rth->daddr == myaddr) {
+		/* sending to this port... TODO: need to test with real situation DNS
+		 * coz sometimes the packet is sent to this device, but different port
+		 */
+		if ((rth->protocol) == ROUTE_ON_CONTROL || (rth->protocol) == ROUTE_ON_UNRELIABLE || (rth->protocol) == ROUTE_ON_RELIABLE) {
+			return P_APPRESPONSE;
+		} else {
+			return P_NOT_YET_IMPLEMENTED;
+		}
+	} else {
+		// sending to somewhere else
+		if (rth->ttl == 1) {
+			return P_TIMEOUT;
+		} else {
+			return P_FORWARD;
+		}
+	}
+	return P_DO_NOTHING;
+}
+
 
 int rt_lookup(uint16_t dest, uint64_t* rt_entry) {
 
@@ -63,6 +97,12 @@ int rt_lookup(uint16_t dest, uint64_t* rt_entry) {
 	return P_REMOTE;
 }
 
+/* takes in packet, modify it for forwarding */
+int modify_packet(u_char* packet) {
+	
+	return -1;
+}
+
 int generate_packet(u_char* packetOut, int size) {
 	if (size < MIN_APP_PKT_LEN) {
 		fprintf(stderr, "ERROR: size should > 60\n");
@@ -77,8 +117,9 @@ int generate_packet(u_char* packetOut, int size) {
 	rth->ttl = (u_int8_t)(0x12 & 0xff);
 	rth->protocol = 1;
 	rth->size = (u_int16_t)size;
-
+	return size;
 }
+/*
 int main()
 {
     createRT();
@@ -98,6 +139,6 @@ int main()
 
     return 0;
 }
-
+*/
 
 

@@ -1,9 +1,6 @@
 #ifndef _ROUTING_H_
 #define _ROUTING_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 #include "packet.h"
 //#include <netinet/in.h>
@@ -20,6 +17,7 @@ typedef enum {
 	P_FORWARD,				/* Forward the packet to next hop */
 	P_TIMEOUT,				/* Drop the packet and generate ICMP timeout reply */
 	P_ERRCHK,				/* Checksum does not match the packet */
+	P_APPRESPONSE,
 	P_NOT_YET_IMPLEMENTED	/* Used only for not-yet-implemented functions */
 } r_op;
 
@@ -36,7 +34,7 @@ void createRT();
 void printRT(uint64_t *);
 
 /* takes in packet, return r_op; */
-int routing_opt(u_char* packet);
+int routing_opt(u_char*, u_int16_t);
 
 /* takes in packet, return whether to route locally or remotely. It sets the second parameter to the routing table entry */
 int rt_lookup(uint16_t, uint64_t *);

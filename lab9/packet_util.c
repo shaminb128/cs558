@@ -10,7 +10,7 @@
  #include "packet_util.h"
  #include "printp.h"
 
- u_int16_t rthdr_chk_gen(struct rthdr* rth) {
+u_int16_t rthdr_chk_gen(struct rthdr* rth) {
  	unsigned int sum = 0;
  	sum += rth->saddr;
  	sum += rth->daddr;
@@ -19,9 +19,9 @@
  	
  	int check = (((u_short)(sum >> 16)) & 0xf) + ((u_short)(sum) & 0xffff); // take carryouts
  	return (u_int16_t)(~check);
- }
+}
 
- u_int16_t packet_chk_gen(u_char* packet, int size) {
+u_int16_t packet_chk_gen(u_char* packet, int size) {
  	u_char* ptr = packet + sizeof(struct rthdr);
  	int packetLen = size - sizeof(struct rthdr);
  	unsigned int sum = 0;
@@ -39,7 +39,47 @@
 	sum = (sum & 0xffff) + ((sum >> 16) & 0xffff);
 	sum = (sum & 0xffff) + ((sum >> 16) & 0xffff);
 	return (u_short)(~sum);
+}
+
+int verify_rthdr_chk(struct rthdr* rth) {
+ 	if (rthdr_chk_gen(rth) != ntohs(rth->check)) {
+		return -1;
+	}
+	return 0;
  }
+
+int verify_packet_chk(u_char* packet, int size, int type) {
+	struct chdr* ch = NULL;
+	struct urhdr* urh = NULL;
+	struct rlhdr* rlh = NULL;
+	switch(type) {
+		case ROUTE_ON_CONTROL:
+			ch = (struct chdr*)(packet + sizeof(struct rthdr));
+			if (packet_chk_gen(packet, size) != ntohs(ch->check)) {
+				//fprintf(stdout, "test check: %04x, packet check: %04x\n", packet_chk_gen(packet, size), ntohs(ch->check));
+				return -1;
+			}
+			break;
+		case ROUTE_ON_UNRELIABLE:
+			urh = (struct urhdr*)(packet + sizeof(struct rthdr));
+			if (packet_chk_gen(packet, size) != ntohs(urh->check)) {
+				//fprintf(stdout, "test check: %04x, packet check: %04x\n", packet_chk_gen(packet, size), ntohs(ch->check));
+				return -1;
+			}
+			break;
+		case ROUTE_ON_RELIABLE:
+			rlh = (struct rlhdr*)(packet + sizeof(struct rthdr));
+			if (packet_chk_gen(packet, size) != ntohs(rlh->check)) {
+				//fprintf(stdout, "test check: %04x, packet check: %04x\n", packet_chk_gen(packet, size), ntohs(ch->check));
+				return -1;
+			}
+			break;
+		default:
+			fprintf(stderr, "ERROR: verify_packet_chk: type not supported\n");
+			break;
+	}
+	return 0;
+}
 
 int generate_random_packet(u_char* packetOut, int size) {
 	memset(packetOut, 0, sizeof(u_char) * PACKET_BUF_SIZE);
@@ -73,7 +113,7 @@ int generate_route_on_packet(u_char* packetOut, int size, int type) {
 			fprintf(stdout, "WARNING: generate_route_on_packet: does not support ROUTE_ON_CONTROL\n");
 			return -1;
 		case ROUTE_ON_UNRELIABLE:
-			printf("generating unreliable packets...\n");
+			//printf("generating unreliable packets...\n");
 			len = sizeof(struct rthdr) + sizeof(struct urhdr);
 			struct urhdr* urh = (struct urhdr*)(packetOut + sizeof(struct rthdr));
 			urh->port = (u_int8_t)(rand() & 0xff);
@@ -86,7 +126,7 @@ int generate_route_on_packet(u_char* packetOut, int size, int type) {
 			urh->check = htons(packet_chk_gen(packetOut, size));
 			break;
 		case ROUTE_ON_RELIABLE:
-		printf("generating reliable packets...\n");
+		//printf("generating reliable packets...\n");
 			len = sizeof(struct rthdr) + sizeof(struct rlhdr);
 			struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 			rlh->port = (u_int8_t)(rand() & 0xff);
