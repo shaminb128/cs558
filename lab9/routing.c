@@ -3,18 +3,19 @@
 #include <string.h>
 #include <netinet/in.h>
 
-#include "packet_util.h"
 #include "routing.h"
-#include "packet.h"
+
 
  uint64_t routing_table[20];
 
 void createRT()
 {
     //Iface :"01", Metric : "00",Gateway : "0000", Mask : "fff0",destination network:  "0010"
-    routing_table[0] = 0x01000000fff00010;
+    routing_table[0] = 0x00000000fff00010;
     rt_tbl_size++;
-    routing_table[1] = 0x02000000fff00020;
+    routing_table[1] = 0x01000000fff00020;
+    rt_tbl_size++;
+    routing_table[2] = 0x02000000fff00030;
     rt_tbl_size++;
     printf("Routing table created\n");
 }
@@ -62,30 +63,33 @@ int routing_opt(u_char* packet, u_int16_t myaddr) {
 }
 
 
-int rt_lookup(uint16_t dest, uint64_t* rt_entry) {
+uint8_t rt_lookup(uint16_t dest) {
 
 	//uint16_t dest = 0x0011;
 
 	int min_metric = 1000, i;
+	uint8_t rt_index;
     int match_found = 0;
 	for(i = 0; i < rt_tbl_size; i++){
          uint16_t rt_dest = routing_table[i] & 0xffff;
          uint16_t rt_mask = (routing_table[i] >> 16) & 0xffff;
          uint16_t rt_gateway = (routing_table[i] >> 32) & 0xffff;
          uint8_t rt_metric = (routing_table[i] >> 48) & 0xff;
+         uint8_t rt_iface = (routing_table[i] >> 56) & 0xff;
 		 if ((dest & rt_mask) == (rt_dest & rt_mask)) {
 			// Matches
 			match_found = 1;
 			if(rt_gateway == 0x0000) {
 				// Local network
-				*rt_entry = routing_table[i];
-				return P_LOCAL;
+				//*rt_entry = routing_table[i];
+				return rt_iface;
 			} else {
 				// remote network
 				if(rt_metric < min_metric) {
 					min_metric = rt_metric;
 					//rtp = p;
-					*rt_entry = routing_table[i];
+					//*rt_entry = routing_table[i];
+					rt_index = rt_iface;
 				}
 			}
 		}
@@ -94,12 +98,12 @@ int rt_lookup(uint16_t dest, uint64_t* rt_entry) {
 	if (!match_found) {
 		return -1;
 	}
-	return P_REMOTE;
+	return rt_index;
 }
 
 /* takes in packet, modify it for forwarding */
 int modify_packet(u_char* packet) {
-	
+
 	return -1;
 }
 
@@ -113,32 +117,32 @@ int generate_packet(u_char* packetOut, int size) {
 	rth->saddr = (u_int16_t)(0x0011 & 0xffff);
 	// Test it for different subnets
 	//rth->daddr = (u_int16_t)(0x0012 & 0xffff);
-	rth->daddr = (u_int16_t)(0x0022 & 0xffff);
+	rth->daddr = (u_int16_t)(0x0031 & 0xffff);
 	rth->ttl = (u_int8_t)(0x12 & 0xff);
 	rth->protocol = 1;
 	rth->size = (u_int16_t)size;
 	return size;
 }
-/*
-int main()
-{
-    createRT();
-    uint64_t * rt_p = routing_table;
-    printRT(rt_p);
-    u_char packetOut[PACKET_BUF_SIZE];
-	int pktlen = generate_packet(packetOut, 128);
-	//fprintp(stdout, packetOut, pktlen);
-    struct rthdr *rth = (struct rthdr*) packetOut;
-    //printf("string %02X", packet);
-	uint16_t dest = (uint16_t) rth->daddr;    // TODO: not working
-	printf("Dest from header %02x\n", dest);
-    uint64_t rt_entry;
 
-    rt_lookup(dest, &rt_entry);
-    printf("Matching Entry : %016llx\n" , rt_entry);
-
-    return 0;
-}
-*/
+//int main()
+//{
+//    createRT();
+//    uint64_t * rt_p = routing_table;
+//    printRT(rt_p);
+//    u_char packetOut[PACKET_BUF_SIZE];
+//	int pktlen = generate_packet(packetOut, 128);
+//	//fprintp(stdout, packetOut, pktlen);
+//    struct rthdr *rth = (struct rthdr*) packetOut;
+//    //printf("string %02X", packet);
+//	uint16_t dest = (uint16_t) rth->daddr;    // TODO: not working
+//	printf("Dest from header %02x\n", dest);
+//    uint64_t rt_entry;
+//
+//    int index = (int) rt_lookup(dest);
+//    //printf("Matching Entry : %016llx\n" , rt_entry);
+//    printf("Matching Index : %d\n" , index);
+//    return 0;
+//}
+//
 
 

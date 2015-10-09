@@ -8,7 +8,7 @@
  #include <string.h>
  #include <netinet/in.h>
  #include "packet_util.h"
- #include "printp.h"
+ //#include "printp.h"
 
 u_int16_t rthdr_chk_gen(struct rthdr* rth) {
  	unsigned int sum = 0;
@@ -16,7 +16,7 @@ u_int16_t rthdr_chk_gen(struct rthdr* rth) {
  	sum += rth->daddr;
  	sum += (u_short)(rth->ttl << 8) | (u_short)(rth->protocol);
  	sum += rth->size;
- 	
+
  	int check = (((u_short)(sum >> 16)) & 0xf) + ((u_short)(sum) & 0xffff); // take carryouts
  	return (u_int16_t)(~check);
 }

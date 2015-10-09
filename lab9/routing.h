@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include "packet.h"
+#include "packet_util.h"
 //#include <netinet/in.h>
 //#include <sys/types.h>
 //#include <sys/socket.h>
@@ -36,8 +37,8 @@ void printRT(uint64_t *);
 /* takes in packet, return r_op; */
 int routing_opt(u_char*, u_int16_t);
 
-/* takes in packet, return whether to route locally or remotely. It sets the second parameter to the routing table entry */
-int rt_lookup(uint16_t, uint64_t *);
+/* takes in destination addr, return the iface index for the device*/
+uint8_t rt_lookup(uint16_t);
 
 /* takes in packet, modify it for forwarding */
 int modify_packet(u_char* packet);
