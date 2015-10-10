@@ -8,7 +8,7 @@
 int total;
 
 void init(){
-    my_addr = 0x21;
+    my_addr = 0x0011;
 
     start_index = 0, last_index = 0, total =0, loop_index = 0;
     packets_num = 0, seqNum = 0;

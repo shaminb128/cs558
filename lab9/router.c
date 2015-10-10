@@ -125,7 +125,7 @@ void sniffer(void* param) {
     (data->myIface).handler = pcap_handle;
     (data->handler_list)[data->tid] = pcap_handle;
     fprintf(stdout, "thread %d: START, iface information:\nDev %d, name: %s, assigned address: %04x\n",data->tid, data->tid, data->dev_name, (data->myIface).myaddr);
-	pcap_loop(pcap_handle , 1 , process_packet , (u_char*)data );	// -1 means an infinite loop
+	pcap_loop(pcap_handle , -1 , process_packet , (u_char*)data );	// -1 means an infinite loop
 	fclose(data->logfile);
 	pcap_close(pcap_handle);
 }
@@ -134,21 +134,21 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	struct sniff* data = (struct sniff*)args;
 	
 	
-	FILE* logfile = data->logfile;
-	pcap_t* handle;
-	char err[128];
+	//FILE* logfile = data->logfile;
+	//pcap_t* handle;
+	//char err[128];
 	int size = (int) header->len;
-	char iface[10];
+	//char iface[10];
 	u_char packetOut[PACKET_BUF_SIZE];
 	memset(packetOut, 0, PACKET_BUF_SIZE);
 	int ret = 0;
-	int packetOutLen = 0;
+	//int packetOutLen = 0;
 
-    pcap_t* myIfaceHandler = (data->myIface).handler;
-    struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
+    //pcap_t* myIfaceHandler = (data->myIface).handler;
+    //struct iphdr *iph = (struct iphdr*)(packet + sizeof(struct ethhdr));
     
 	ret = routing_opt(packet, (data->myIface).myaddr);
-	int handle_idx;
+	//int handle_idx;
 
 	switch(ret) {
 		case P_FORWARD:
@@ -158,24 +158,25 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			int index = (int)rt_lookup(rth->daddr);
 			
 			if ((ret = pcap_inject((data->handler_list)[index], packetOut, size)) < 0){
-				fprintf(stderr, "thread %s: fail to inject packet to iface[%d]\n", data->tid, index);
+				fprintf(stderr, "thread %d: fail to inject packet to iface[%d]\n", data->tid, index);
 				exit(1);
 			}
 			memset(packetOut, 0, PACKET_BUF_SIZE);
 			break;
 		case P_APPRESPONSE:
-			
+			fprintf(stdout, "thread %d: received a P_APPRESPONSE packet\n", data->tid);
 			break;
 		case P_TIMEOUT:
-			
+			fprintf(stdout, "thread %d: received a P_TIMEOUT packet\n", data->tid);
 			break;
 		case P_ERRCHK:
-
+			fprintf(stdout, "thread %d: received a P_ERRCHK packet\n", data->tid);
 			break;
 		case P_NOT_YET_IMPLEMENTED:
-
+			fprintf(stdout, "thread %d: received a P_NOT_YET_IMPLEMENTED packet. Protocol Not Supported\n", data->tid);
 			break;
 		default:
+			fprintf(stderr, "thread %d: ERROR: come to default routine, with return code %d.\n", data->tid, ret);
 			break;
 	}
 	

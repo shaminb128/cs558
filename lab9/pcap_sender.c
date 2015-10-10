@@ -18,6 +18,10 @@
 #include <netinet/in.h>
 #include <netdb.h> //hostent
 
+#include "packet.h"
+#include "packet_util.h"
+#include "printp.h"
+
 void print_dummy_packet(const u_char* data, int size){
 	int i , j;
 	printf("============================== here is a packet of size %d ==============================\n", size);
@@ -65,7 +69,7 @@ void print_dummy_packet(const u_char* data, int size){
 	printf("============================== end of packet ==============================\n\n\n\n\n\n");
 }
 
-int generate_random_packet(u_char* packetOut, int size) {
+/*int generate_random_packet(u_char* packetOut, int size) {
 	memset(packetOut, 0, sizeof(u_char) * 1600);
 	sprintf((char*)packetOut, "here is a random packet with size %d*", size);
 	int len = strlen((const char*)packetOut);
@@ -75,10 +79,10 @@ int generate_random_packet(u_char* packetOut, int size) {
 	}
 	return size;
 }
+*/
 
 
-
-u_char packetOut[1600];
+u_char packetOut[PACKET_BUF_SIZE];
 
 int main (int argc, char** argv) {
 	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
@@ -121,17 +125,47 @@ int main (int argc, char** argv) {
 	}
 	printf( "DONE\n");
 
+	printf("generating packets of 256 bytes...\n");
+	int pktlen = generate_route_on_packet(packetOut, 256, ROUTE_ON_RELIABLE);
+	struct rthdr* rth = (struct rthdr*)packetOut;
+	rth->saddr = 0x0031;
+	rth->daddr = 0x0011;
+	rth->check = htons(rthdr_chk_gen(rth));
+	sprintf((char*)(packetOut + sizeof(struct rthdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 256);
+	struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
+	rlh->check = htons(packet_chk_gen(packetOut, 256));
+	fprintp(stdout, packetOut, pktlen);
+	/*printf("generating packets of 8 bytes...\n");
+	generate_random_packet(packetOut, 8);*/
 
-	printf("generating packets of 8 bytes...\n");
-	generate_random_packet(packetOut, 8);
-	if ((ret = pcap_inject(handle_sniffed, packetOut, 8)) < 0){
+	if ((ret = pcap_inject(handle_sniffed, packetOut, 256)) < 0){
 		fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
 	}
 	printf( "DONE\n");
 	sleep(1);
 
+	printf("generating packets of 256 bytes...\n");
+	pktlen = generate_route_on_packet(packetOut, 1514, ROUTE_ON_RELIABLE);
+	rth = (struct rthdr*)packetOut;
+	rth->saddr = 0x0031;
+	rth->daddr = 0x0011;
+	rth->check = htons(rthdr_chk_gen(rth));
+	sprintf((char*)(packetOut + sizeof(struct rthdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 1514);
+	rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
+	rlh->check = htons(packet_chk_gen(packetOut, 1514));
+	fprintp(stdout, packetOut, pktlen);
+	/*printf("generating packets of 8 bytes...\n");
+	generate_random_packet(packetOut, 8);*/
 
+	if ((ret = pcap_inject(handle_sniffed, packetOut, 1514)) < 0){
+		fprintf(stderr, "Fail to inject packet\n");
+		// exit(1);
+	}
+	printf( "DONE\n");
+	sleep(1);
+
+/*
 	printf("generating packets of 59 bytes...\n");
 	generate_random_packet(packetOut, 59);
 	if ((ret = pcap_inject(handle_sniffed, packetOut, 59)) < 0){
@@ -225,7 +259,8 @@ int main (int argc, char** argv) {
 		fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
 	}
-	printf( "DONE\n");
+	*/
+	//printf( "DONE\n");
 
 	printf( "END OF TEST\n");
 	pcap_close(handle_sniffed);

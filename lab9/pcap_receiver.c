@@ -19,6 +19,9 @@
 #include <netinet/in.h>
 #include <netdb.h> //hostent
 
+#include "packet_util.h"
+#include "printp.h"
+
 void print_dummy_packet(const u_char* data, int size){
 	int i , j;
 	printf("============================== here is a packet of size %d ==============================\n", size);
@@ -66,7 +69,7 @@ void print_dummy_packet(const u_char* data, int size){
 	printf("============================== end of packet ==============================\n\n\n\n\n\n");
 }
 
-int generate_random_packet(u_char* packetOut, int size) {
+/*int generate_random_packet(u_char* packetOut, int size) {
 	memset(packetOut, 0, sizeof(u_char) * 1600);
 	sprintf((char*)packetOut, "here is a random packet with size %d*", size);
 	int len = strlen((const char*)packetOut);
@@ -75,11 +78,11 @@ int generate_random_packet(u_char* packetOut, int size) {
 		packetOut[i] = (u_char) (rand() & 0x000000ff);
 	}
 	return size;
-}
+}*/
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 	int size = (int) header->len;
-	print_dummy_packet(packet, size);
+	fprintp(stdout, (u_char*)packet, size);
 }
 
 u_char packetOut[1600];
