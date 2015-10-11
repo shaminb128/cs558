@@ -131,7 +131,7 @@ int main (int argc, char** argv) {
 	rth->saddr = 0x0031;
 	rth->daddr = 0x0011;
 	rth->check = htons(rthdr_chk_gen(rth));
-	sprintf((char*)(packetOut + sizeof(struct rthdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 256);
+	sprintf((char*)(packetOut + sizeof(struct rthdr) + sizeof(struct rlhdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 256);
 	struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 	rlh->check = htons(packet_chk_gen(packetOut, 256));
 	fprintp(stdout, packetOut, pktlen);
@@ -151,7 +151,7 @@ int main (int argc, char** argv) {
 	rth->saddr = 0x0031;
 	rth->daddr = 0x0011;
 	rth->check = htons(rthdr_chk_gen(rth));
-	sprintf((char*)(packetOut + sizeof(struct rthdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 1514);
+	sprintf((char*)(packetOut + sizeof(struct rthdr) + sizeof(struct rlhdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 1514);
 	rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 	rlh->check = htons(packet_chk_gen(packetOut, 1514));
 	fprintp(stdout, packetOut, pktlen);
