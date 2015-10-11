@@ -3,7 +3,7 @@
  */
 #include "sender.h"
 #include "../printp.h"
-#define USAGE "Usage: ./client [filename] [hostname] [portno] "
+#define USAGE "Usage: ./sender [filename] [hostname] [portno] "
 
 
 void init(){

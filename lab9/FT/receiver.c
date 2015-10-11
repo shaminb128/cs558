@@ -3,7 +3,7 @@
  */
 #include "receiver.h"
 
-#define USAGE "Usage: ./server [portno] [filename] [filesize]"
+#define USAGE "Usage: ./receiver [portno] [filename] [filesize]"
 
 int total;
 
@@ -89,9 +89,9 @@ void write_ur_to_file(u_char * payload, int payload_size){
     if(seqNum >= packets_num  ){
         printf("File successfully written \n");
         printTime();
-        pcap_close(handle_sniffed);
+        fclose(fp_write);
         printf( "DONE\n");
-
+        exit(1);
     }
 }
 
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 //    track_packets = (int *)calloc(packets_num, sizeof (int));
 	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
 	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
-
+    //handle_sniffed = (pcap_t *) malloc(sizeof (pcap_t));
 
 	char err[128];						// Holds the error
 	char *device_name = NULL;
@@ -160,15 +160,13 @@ int main(int argc, char *argv[])
 	printf( "DONE\n");
 
 
-	pcap_loop(handle_sniffed , 120 , process_packet , NULL);	// -1 means an infinite loop
-    printTime();
+	pcap_loop(handle_sniffed , -1, process_packet , NULL);	// -1 means an infinite loop
 
+
+    pcap_close(handle_sniffed);
 	printf( "DONE\n");
 	printf( "END OF TEST\n");
-	pcap_close(handle_sniffed);
-
 //    pthread_join(nack_thread_s, NULL);
-    fclose(fp_write);
     return 0;
 }
 
