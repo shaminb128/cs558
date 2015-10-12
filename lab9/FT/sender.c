@@ -7,7 +7,7 @@
 
 
 void init(){
-    my_addr = 0x0031;
+    my_addr = 0x0011;
     seqNum=0;
 }
 
@@ -141,11 +141,11 @@ int main(int argc, char *argv[])
     fseek(fp_read, 0L, SEEK_SET);
 
     if(strcmp(argv[2], "node1") == 0)
-        dest_addr = 0x0021;
-    else if(strcmp(argv[2], "node2") == 0)
-        dest_addr = 0031;
-    else if(strcmp(argv[2], "node3") == 0)
         dest_addr = 0x0011;
+    else if(strcmp(argv[2], "node2") == 0)
+        dest_addr = 0x0021;
+    else if(strcmp(argv[2], "node3") == 0)
+        dest_addr = 0x0031;
 
     port = atoi(argv[3]);
     //printf("Seq No: %d,  No of packets  %d \n" , seqNum, no_of_packets);

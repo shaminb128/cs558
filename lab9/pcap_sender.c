@@ -128,8 +128,8 @@ int main (int argc, char** argv) {
 	printf("generating packets of 256 bytes...\n");
 	int pktlen = generate_route_on_packet(packetOut, 256, ROUTE_ON_RELIABLE);
 	struct rthdr* rth = (struct rthdr*)packetOut;
-	rth->saddr = 0x0031;
-	rth->daddr = 0x0011;
+	rth->saddr = 0x0011;
+	rth->daddr = 0x0021;
 	rth->check = htons(rthdr_chk_gen(rth));
 	sprintf((char*)(packetOut + sizeof(struct rthdr) + sizeof(struct rlhdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 256);
 	struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
@@ -148,8 +148,8 @@ int main (int argc, char** argv) {
 	printf("generating packets of 256 bytes...\n");
 	pktlen = generate_route_on_packet(packetOut, 1514, ROUTE_ON_RELIABLE);
 	rth = (struct rthdr*)packetOut;
-	rth->saddr = 0x0031;
-	rth->daddr = 0x0011;
+	rth->saddr = 0x0011;
+	rth->daddr = 0x0021;
 	rth->check = htons(rthdr_chk_gen(rth));
 	sprintf((char*)(packetOut + sizeof(struct rthdr) + sizeof(struct rlhdr)), "This is a dummy test packet, with a size of %d. If this packet is successfully received, this sentence should be displayed exactly the same. Here starts the random data:", 1514);
 	rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
