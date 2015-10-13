@@ -31,7 +31,7 @@ typedef enum {
 int rt_tbl_size;
 
 
-void createRT();
+void createRT(int);
 void printRT(uint64_t *);
 int getIPfromIface(char*, char*);
 

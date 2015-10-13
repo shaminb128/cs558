@@ -17,7 +17,7 @@
 
  uint64_t routing_table[20];
 
-void createRT()
+void createRT(int extra)
 {
     //Iface :"01", Metric : "00",Gateway : "0000", Mask : "fff0",destination network:  "0010"
     routing_table[0] = 0x00000000fff00010;
@@ -26,6 +26,9 @@ void createRT()
     rt_tbl_size++;
     routing_table[2] = 0x02000000fff00030;
     rt_tbl_size++;
+    if (extra == 1) {
+    	routing_table[3] = 0x03000000fff00040;
+    }
     printf("Routing table created\n");
 }
 

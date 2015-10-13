@@ -2,9 +2,10 @@ receiver: receiver.o routing.o packet_util.o printp.o
 	gcc -o receiver -g -pthread receiver.o packet_util.o printp.o routing.o -lpthread -lpcap
 receiver.o: receiver.c ../packet.h ../printp.h ../routing.h
 	gcc -g -c -Wall receiver.c
-sender: sender.o packet_util.o printp.o
-	gcc -o sender -g -pthread sender.o packet_util.o printp.o -lpthread -lpcap
-sender.o: sender.c ../packet.h ../printp.h
+
+sender: sender.o routing.o packet_util.o printp.o
+	gcc -o sender -g -pthread sender.o packet_util.o printp.o routing.o -lpthread -lpcap
+sender.o: sender.c ../packet.h ../printp.h ../routing.h
 	gcc -g -c -Wall sender.c
 routing.o: ../routing.c ../routing.h ../packet.h
 	gcc -g -c -Wall ../routing.c

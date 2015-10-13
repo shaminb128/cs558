@@ -1,6 +1,20 @@
 /**
  * 558l lab9
  */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#include <linux/sockios.h>
+#include <unistd.h>
+
+#include "../routing.h"
 #include "receiver.h"
 
 #define USAGE "Usage: ./receiver [portno] [filename] [filesize]"
@@ -124,8 +138,8 @@ int main(int argc, char *argv[])
     //handle_sniffed = (pcap_t *) malloc(sizeof (pcap_t));
 
 	char err[128];						// Holds the error
-	char *device_name = NULL;
-	char devices[10][64];				// For holding all available
+	char device_name[10];
+	//char devices[10][64];				// For holding all available
 	int count = 0;
 	int ret = 0;
 	int n = 0;
@@ -141,16 +155,18 @@ int main(int argc, char *argv[])
 
 	printf("Here are the available devices:\n");
 	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
-		printf("%d. %s\t-\t%s\n", count, device_ptr->name, device_ptr->description);
-		if (device_ptr->name != NULL) {
-			strcpy(devices[count], device_ptr->name);
-		}
-		count++;
+		if (device_ptr->name != NULL && !strncmp(device_ptr->name, "eth", 3)){
+            char ipaddr[20];
+            if ((ret = getIPfromIface(device_ptr->name, ipaddr)) != 0) {
+                fprintf(stderr, "ERROR getting IP from Iface for device %s\n", device_ptr->name);
+            }
+            if (strncmp(ipaddr, "10.", 3) == 0) {
+                strcpy(device_name, device_ptr->name);
+                fprintf(stdout, "Find iface %s, ip %s\n", device_name, ipaddr);
+                break;
+            }
+        }
 	}
-
-	printf("Which device do you want to sniff? Enter the number:\n");
-	scanf("%d", &n);
-	device_name = devices[n];
 
 	printf("Trying to open device %s to receive ... ", device_name);
 	if ( (handle_sniffed = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {

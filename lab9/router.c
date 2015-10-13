@@ -38,6 +38,10 @@ void process_packet(u_char *, const struct pcap_pkthdr *, const u_char *);
 void sniffer(void*);
 
 int main (int argc, char** argv) {
+	if (argc != 2) {
+		fprintf(stderr, "Usage: ./router [extra_credit = enter_extra_credit_mode ? 1 : 0]\n");
+		exit(1);
+	}
 	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
 	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
 
@@ -48,8 +52,9 @@ int main (int argc, char** argv) {
 	int n = 0;
 	int i = 0;
 	int ret = 0;						// Return val
+	int extra = atoi(argv[1]);
 
-	createRT();
+	createRT(extra);
 
 	printf("Scanning available devices ... ");
 	if ( (ret = pcap_findalldevs(&device_list, err)) != 0 ) {
