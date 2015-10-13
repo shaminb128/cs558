@@ -161,7 +161,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			modify_packet(packetOut);
 			struct rthdr* rth = (struct rthdr*)packetOut;
 			int index = (int)rt_lookup(rth->daddr);
-			
+			fprintf(stdout, "thread %d: received a P_FORWARD packet, inject to iface[%d]\n", data->tid, index);
 			if ((ret = pcap_inject((data->handler_list)[index], packetOut, size)) < 0){
 				fprintf(stderr, "thread %d: fail to inject packet to iface[%d]\n", data->tid, index);
 				exit(1);

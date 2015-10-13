@@ -28,6 +28,7 @@ void createRT(int extra)
     rt_tbl_size++;
     if (extra == 1) {
     	routing_table[3] = 0x03000000fff00040;
+    	rt_tbl_size++;
     }
     printf("Routing table created\n");
 }
