@@ -13,16 +13,27 @@
 #include <netinet/in.h>
 #include <linux/sockios.h>
 #include <unistd.h>
-
+#include <sys/mman.h>
 #include "sender.h"
 #include "../routing.h"
 #include "../printp.h"
 #define USAGE "Usage: ./sender [filename] [hostname] [portno] "
 
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+uint16_t my_addr, dest_addr;
+uint8_t port;
+//FILE * fp_read;
+int fp;
+char * data;
+size_t filesize;
+char *data;
+int no_of_packets;
+pcap_t *handle_sniffed = NULL;
 
 void init(){
     my_addr = 0x0011;
-    seqNum=0;
+    //seqNum=0;
 }
 
 void printTime(){
@@ -35,7 +46,7 @@ void printTime(){
 }
 
 
-int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, int type) {
+int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, int type, int seqNum) {
 
 	if (size < MIN_APP_PKT_LEN) {
 		fprintf(stderr, "ERROR: size should > 60\n");
@@ -71,7 +82,7 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 			printf("Sending a UNRELIABLE packet of size: %d\n" , size);
 			break;
 		case ROUTE_ON_RELIABLE:
-		    printf("generating reliable packets...\n");
+		    //printf("generating reliable packets...\n");
 			hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
 			payload_size = size - hdrlen;
 			//printf("Size :%d, Header len: %d, Payload size : %d SeqNo: %d\n", size, hdrlen, payload_size, seqNum);
@@ -109,12 +120,77 @@ void* resend_packet(void* a)
 //    }
 }
 
+void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+
+    struct rthdr *rth = (struct rthdr*) packet;
+    u_char *packetIn = (u_char *) packet;
+	char err[128];
+	int size = (int) header->len;
+	int ret = 0, hdrlen, payload_size;
+
+	ret = routing_opt(packetIn, my_addr);
+    int protocol = rth->protocol;
+	switch(ret) {
+        case P_APPRESPONSE:
+                if(verify_packet_chk(packetIn, size, protocol) < 0){
+                        fprintf(stderr, "Packet checksum verification failed for protocol %d \n", protocol);
+                        exit(1);
+                }
+                hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
+                struct rlhdr* rlh = (struct rlhdr*)(packetIn + sizeof(struct rthdr));
+
+                if(rlh->port != port){
+                    fprintf(stderr, "Requesting port %d doesnot match my port %d\n", rlh->port, port);
+                    exit(1);
+                }
+                int seqNum = rlh->seq;
+                u_char packet[PACKET_BUF_SIZE];
+                char payload[PAYLOAD_SIZE];
+                int payload_size;
+                if(seqNum == (no_of_packets-1))
+                    payload_size = filesize % PAYLOAD_SIZE;
+                else
+                    payload_size = PAYLOAD_SIZE;
+                //fseek(fp_read, seqNum * PAYLOAD_SIZE, SEEK_SET);
+                memcpy(payload, data + (seqNum * PAYLOAD_SIZE), payload_size);
+                int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
+                //printf("R_Seq #: %d ", seqNum);
+                if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
+                    fprintf(stderr, "Fail to inject packet\n");
+                // exit(1);
+                }
+
+
+        default:
+            break;
+
+	}
+}
+
+void mapfile(char *filename){
+    pthread_mutex_lock(&lock);
+    if ((fp = open (filename, O_RDONLY)) < 0){
+        fprintf(stderr,"can't open %s for reading", filename);
+        pthread_mutex_unlock(&lock);
+        exit(0);
+    }
+    filesize = lseek(fp, 0, SEEK_END);
+    printf("Filesize is %zu\n",filesize);
+    data = mmap((caddr_t)0, filesize, PROT_READ, MAP_SHARED, fp, 0);
+    if (data == (caddr_t)(-1)) {
+        perror("mmap");
+        pthread_mutex_unlock(&lock);
+        exit(0);
+    }
+    pthread_mutex_unlock(&lock);
+}
+
 
 int main(int argc, char *argv[])
 {
     pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
 	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
-	pcap_t *handle_sniffed = NULL;
+
 
 	char err[128];						// Holds the error
 	char device_name[10];
@@ -154,32 +230,35 @@ int main(int argc, char *argv[])
 	}
 	printf("DONE \n");
 	printTime();
+
 	printf("generating packets...\n");
 
 	//Create thread to handle resend
-	if((pthread_create(&resend_thread,NULL,resend_packet,NULL)) != 0){
-        fprintf(stderr, "error in creating pthread. n");
-        exit(1);
-    }
+//	if((pthread_create(&resend_thread, NULL, resend_packet, NULL)) != 0){
+//        fprintf(stderr, "error in creating pthread. n");
+//        exit(1);
+//    }
 
     u_char packet[PACKET_BUF_SIZE];
     char payload[PAYLOAD_SIZE];
+
     int payload_size;
     long offset = 0;
     init();
-    fp_read = fopen(argv[1], "r");
-    if(fp_read == NULL){
-        fprintf(stderr, "File open failed");
-        exit(1);
-    }
-    fseek(fp_read, 0L, SEEK_END);
-    filesize = ftell(fp_read);
+    mapfile(argv[1]);
+//    fp_read = fopen(argv[1], "r");
+//    if(fp_read == NULL){
+//        fprintf(stderr, "File open failed");
+//        exit(1);
+//    }
+//    fseek(fp_read, 0L, SEEK_END);
+//    filesize = ftell(fp_read);
 
     if((filesize % PAYLOAD_SIZE) != 0)
-        no_of_packets = (filesize/PAYLOAD_SIZE)+1;
+        no_of_packets = (filesize/PAYLOAD_SIZE) + 1;
     else
         no_of_packets = (filesize/PAYLOAD_SIZE);
-    fseek(fp_read, 0L, SEEK_SET);
+    //fseek(fp_read, 0L, SEEK_SET);
 
     if(strcmp(argv[2], "node1") == 0)
         dest_addr = 0x0011;
@@ -189,33 +268,34 @@ int main(int argc, char *argv[])
         dest_addr = 0x0031;
 
     port = atoi(argv[3]);
-    //printf("Seq No: %d,  No of packets  %d \n" , seqNum, no_of_packets);
+    int seqNum = 0;
     //printf("My Ip: %02x, dest IP : %02x, port no: %d, FS: %d, Packet #: %d\n", my_addr, dest_addr, port, filesize, no_of_packets );
+    //printf("Sending RELIABLE packets \n");
     while (seqNum < no_of_packets) {
-
-        //printf("Seq: %d, Offset : %d\n", seqNum, offset);
-        fseek(fp_read, offset, SEEK_SET);
-        if(seqNum == (no_of_packets-1)){
+        //fseek(fp_read, offset, SEEK_SET);
+        if(seqNum == (no_of_packets-1))
             payload_size = filesize % PAYLOAD_SIZE;
-        	//printf("Read the last payload of size %d\n" , filesize% PAYLOAD_SIZE);
-        	}
-        else{
+        else
             payload_size = PAYLOAD_SIZE;
-        	}
-        fread(payload, 1, payload_size, fp_read);
+        memcpy(payload, data + offset, payload_size);
+        //fread(payload, 1, payload_size, fp_read);
         offset = offset + payload_size;
-        //printf("Read data : %s \n", payload);
+        //change for RELIABLE/UNRELIABLE
         //int pktlen = generate_route_on_file_packet(packet, payload, payload_size + UR_HEADER_SIZE, ROUTE_ON_UNRELIABLE );
-        int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE );
+        int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
+        //fprintf(stdout, "%d, ", seqNum);
         if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
         }
-        //printf("Size returned:%d\n", pktlen);
-        //fprintp(stdout, packet, pktlen);
         seqNum++;
     }
+    pcap_loop(handle_sniffed , -1, process_packet , NULL);	// use it to receive NACK
+    printf("\n");
+    munmap(data, filesize);
+    close(fp);
     pcap_close(handle_sniffed);
+   // pthread_join(resend_thread, NULL);
     printf( "DONE\n");
     return 1;
 }

@@ -27,18 +27,9 @@
 # define UR_HEADER_SIZE 14
 # define RE_HEADER_SIZE 16
 
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-uint16_t my_addr, dest_addr;
-uint8_t port;
-FILE * fp_read;
-size_t filesize;
-char *data;
-int no_of_packets, seqNum=0;
-
 //Function declaration
 void init();
-int generate_route_on_file_packet(u_char* ,char *, int , int );
+int generate_route_on_file_packet(u_char* ,char *, int , int, int );
 void* resend_packet(void* a);
 
 pthread_t resend_thread;
