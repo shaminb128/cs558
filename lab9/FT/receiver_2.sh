@@ -1,2 +1,6 @@
-sudo ./receiver 21 data_21.bin 104857600
-sudo ./receiver 22 data_22.bin 104857600
+#!/bin/sh
+sudo ./receiver 21 data_21.bin 10485760 &
+sudo ./receiver 23 data_23.bin 10485760 &
+sudo ./receiver 24 data_24.bin 10485760 &
+wait
+echo "node 2 received all file segments"
