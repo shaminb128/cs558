@@ -36,19 +36,10 @@ size_t filesize;
 char *data;
 int no_of_packets, seqNum=0;
 
-
-
-
-
 //Function declaration
 void init();
 int generate_route_on_file_packet(u_char* ,char *, int , int );
-void send_file_info();//use either this or void send_file_info_tcp()
-//void send_file_info_tcp();
-//void send_packets(packet);
-//void mapfile();
-//void makesocket();
-//void* resend_packet(void* a);
-//
+void* resend_packet(void* a);
 
+pthread_t resend_thread;
 #endif

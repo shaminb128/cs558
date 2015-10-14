@@ -1,21 +1,7 @@
 /**
  * 558l lab9
  */
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <linux/sockios.h>
-#include <unistd.h>
-
 #include "sender.h"
-#include "../routing.h"
 #include "../printp.h"
 #define USAGE "Usage: ./sender [filename] [hostname] [portno] "
 
@@ -33,7 +19,6 @@ void printTime(){
   timeinfo = localtime ( &rawtime );
   printf ( "Current time: %s", asctime (timeinfo) );
 }
-
 
 int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, int type) {
 
@@ -71,10 +56,10 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 			printf("Sending a UNRELIABLE packet of size: %d\n" , size);
 			break;
 		case ROUTE_ON_RELIABLE:
-		    printf("generating reliable packets...\n");
+            printf("generating reliable packets...\n");
 			hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
 			payload_size = size - hdrlen;
-			//printf("Size :%d, Header len: %d, Payload size : %d SeqNo: %d\n", size, hdrlen, payload_size, seqNum);
+			printf("Size :%d, Header len: %d, Payload size : %d \n", size, hdrlen, payload_size);
 			struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 			rlh->port = (u_int8_t)(port & 0xff);
 			rlh->seq = (u_int16_t)(seqNum & 0xffff);
@@ -109,7 +94,6 @@ void* resend_packet(void* a)
 //    }
 }
 
-
 int main(int argc, char *argv[])
 {
     pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
@@ -117,8 +101,8 @@ int main(int argc, char *argv[])
 	pcap_t *handle_sniffed = NULL;
 
 	char err[128];						// Holds the error
-	char device_name[10];
-	//char devices[10][64];				// For holding all available
+	char *device_name = NULL;
+	char devices[10][64];				// For holding all available
 	int count = 0;
 	int ret = 0;
 	int n = 0;
@@ -134,18 +118,16 @@ int main(int argc, char *argv[])
 
 	printf("Here are the available devices:\n");
 	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
-		if (device_ptr->name != NULL && !strncmp(device_ptr->name, "eth", 3)){
-			char ipaddr[20];
-			if ((ret = getIPfromIface(device_ptr->name, ipaddr)) != 0) {
-				fprintf(stderr, "ERROR getting IP from Iface for device %s\n", device_ptr->name);
-			}
-			if (strncmp(ipaddr, "10.", 3) == 0) {
-				strcpy(device_name, device_ptr->name);
-				fprintf(stdout, "Find iface %s, ip %s\n", device_name, ipaddr);
-				break;
-			}
+		printf("%d. %s\t-\t%s\n", count, device_ptr->name, device_ptr->description);
+		if (device_ptr->name != NULL) {
+			strcpy(devices[count], device_ptr->name);
 		}
+		count++;
 	}
+
+	printf("Which device do you want to sniff? Enter the number:\n");
+	scanf("%d", &n);
+	device_name = devices[n];
 
 	printf("Trying to open device %s to send ... ", device_name);
 	if ( (handle_sniffed = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {
@@ -153,14 +135,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	printf("DONE \n");
-	printTime();
-	printf("generating packets...\n");
-
 	//Create thread to handle resend
 	if((pthread_create(&resend_thread,NULL,resend_packet,NULL)) != 0){
-        fprintf(stderr, "error in creating pthread. n");
+        fprintf(stderr, "error in creating pthread: %s\n",strerror(error));
         exit(1);
     }
+	printTime();
+	printf("generating packets...\n");
 
     u_char packet[PACKET_BUF_SIZE];
     char payload[PAYLOAD_SIZE];
@@ -215,6 +196,7 @@ int main(int argc, char *argv[])
         //fprintp(stdout, packet, pktlen);
         seqNum++;
     }
+    pthread_join(resend_thread,NULL);
     pcap_close(handle_sniffed);
     printf( "DONE\n");
     return 1;
