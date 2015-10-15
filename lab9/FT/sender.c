@@ -92,6 +92,7 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
             memcpy(packetOut + hdrlen, payload, payload_size);
 
             rlh->check = htons(packet_chk_gen(packetOut, size));
+            fprintf(stdout, "Send R_Seq #: %d to %d\n", rlh->seq , rth->daddr   );
 			break;
 		default:
 			fprintf(stderr, "ERROR: protocol not supported\n");
@@ -120,14 +121,15 @@ void* resend_packet(void* a)
 //    }
 }
 
-void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet_n) {
 
-    struct rthdr *rth = (struct rthdr*) packet;
-    u_char *packetIn = (u_char *) packet;
+    struct rthdr *rth = (struct rthdr*) packet_n;
+    u_char *packetIn = (u_char *) packet_n;
 	char err[128];
 	int size = (int) header->len;
 	int ret = 0, hdrlen, payload_size;
-
+    if(rth->saddr == my_addr)
+        return;
 	ret = routing_opt(packetIn, my_addr);
     int protocol = rth->protocol;
 	switch(ret) {
@@ -143,8 +145,13 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     fprintf(stderr, "Requesting port %d doesnot match my port %d\n", rlh->port, port);
                     exit(1);
                 }
+                printf("Received NACK for %d with payload %d\n", seqNum, packetIn[hdrlen]);
+                if(packetIn[hdrlen] != 0)    //Not a nack packet
+                    return;
                 int seqNum = rlh->seq;
-                u_char packet[PACKET_BUF_SIZE];
+
+
+                u_char packetOut[PACKET_BUF_SIZE];
                 char payload[PAYLOAD_SIZE];
                 int payload_size;
                 if(seqNum == (no_of_packets-1))
@@ -153,12 +160,14 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     payload_size = PAYLOAD_SIZE;
                 //fseek(fp_read, seqNum * PAYLOAD_SIZE, SEEK_SET);
                 memcpy(payload, data + (seqNum * PAYLOAD_SIZE), payload_size);
-                int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
-                //printf("R_Seq #: %d ", seqNum);
-                if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
+                int pktlen = generate_route_on_file_packet(packetOut, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
+
+                if ((ret = pcap_inject(handle_sniffed, packetOut, pktlen)) != pktlen){
                     fprintf(stderr, "Fail to inject packet\n");
+                    fprintf("Only %d inserted \n", ret);
                 // exit(1);
                 }
+                fprintf(stdout, "Send R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);
 
 
         default:
@@ -178,7 +187,7 @@ void mapfile(char *filename){
     printf("Filesize is %zu\n",filesize);
     data = mmap((caddr_t)0, filesize, PROT_READ, MAP_SHARED, fp, 0);
     if (data == (caddr_t)(-1)) {
-        perror("mmap");
+        fprintf(stdout, "MMAP ERROR");
         pthread_mutex_unlock(&lock);
         exit(0);
     }
@@ -228,7 +237,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
 		exit(1);
 	}
-	printf("DONE \n");
+	fprintf(stdout, "OPEN DONE \n");
 	printTime();
 
 	printf("generating packets...\n");
@@ -253,7 +262,6 @@ int main(int argc, char *argv[])
 //    }
 //    fseek(fp_read, 0L, SEEK_END);
 //    filesize = ftell(fp_read);
-
     if((filesize % PAYLOAD_SIZE) != 0)
         no_of_packets = (filesize/PAYLOAD_SIZE) + 1;
     else
@@ -283,7 +291,7 @@ int main(int argc, char *argv[])
         //change for RELIABLE/UNRELIABLE
         //int pktlen = generate_route_on_file_packet(packet, payload, payload_size + UR_HEADER_SIZE, ROUTE_ON_UNRELIABLE );
         int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
-        //fprintf(stdout, "%d, ", seqNum);
+        fprintf(stdout, "%d, ", seqNum);
         if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
@@ -292,9 +300,10 @@ int main(int argc, char *argv[])
     }
     pcap_loop(handle_sniffed , -1, process_packet , NULL);	// use it to receive NACK
     printf("\n");
+
+    pcap_close(handle_sniffed);
     munmap(data, filesize);
     close(fp);
-    pcap_close(handle_sniffed);
    // pthread_join(resend_thread, NULL);
     printf( "DONE\n");
     return 1;

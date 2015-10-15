@@ -98,7 +98,7 @@ void init(){
         packets_num = filesize/PAYLOAD_SIZE;
         last_packet_size = PAYLOAD_SIZE;
     }
-    printf("packet nim: %d \n", packets_num);
+    printf("packet num: %d \n", packets_num);
     track_packets = (int *)calloc(packets_num, sizeof (int));
 }
 
@@ -113,14 +113,19 @@ void printTime(){
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
 
-    printf("PP");
+
     struct rthdr *rth = (struct rthdr*) packet;
     u_char *packetIn = (u_char *) packet;
 	char err[128];
 	int size = (int) header->len;
 	int ret = 0, hdrlen, payload_size;
-    dest_addr = rth->saddr;
+	fprintf(stdout,"PP from %d\n", rth->saddr);
+	if(rth->saddr == my_addr)
+        return;
+
+
 	ret = routing_opt(packetIn, my_addr);
+	//printf("Routing opt is %d \n", ret);
     int protocol = rth->protocol;
 	switch(ret) {
         case P_APPRESPONSE:
@@ -142,7 +147,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                         write_ur_to_file(packetIn + hdrlen, payload_size);
                         break;
                     case ROUTE_ON_RELIABLE:
-
+                        pthread_mutex_lock(&lock);
                         hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
                         struct rlhdr* rlh = (struct rlhdr*)(packetIn + sizeof(struct rthdr));
 
@@ -150,9 +155,9 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                             fprintf(stderr, "Requesting port %d doesnot match my port %d\n", rlh->port, port);
                             exit(1);
                         }
+                        dest_addr = rth->saddr;
+                        fprintf(stdout, "Received a RELIABLE packet of seqNum: %d from %d \n", rlh->seq, dest_addr);
 
-                        printf("Received a RELIABLE packet of seqNum: %d \n", rlh->seq);
-                        pthread_mutex_lock(&lock);
                         if (updateTrackPacketsArray(rlh->seq)){
                             track_packets[rlh->seq] = 1;
                             if((rlh->seq) > last_index)
@@ -187,7 +192,7 @@ void write_ur_to_file(u_char * payload, int payload_size){
         printf("File successfully written \n");
         printTime();
         fclose(fp_write);
-        printf( "DONE\n");
+        fprintf(stdout, "WRITING TO FILE DONE\n");
         exit(1);
     }
 }
@@ -203,7 +208,7 @@ void write_re_to_file(u_char * payload, int payload_size, int seqNum){
         printf("File successfully written \n");
         printTime();
         fclose(fp_write);
-        printf( "DONE\n");
+        fprintf(stdout, "FILE WRITING DONE\n");
         exit(1);
     }
 }
@@ -267,22 +272,22 @@ int getNackSeqNum(){
 
 void send_nack_to_client(int seqNum)
 {
-
-//    if ( (handle_sniffed = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {
-//		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
+//    pcap_t *handle_sniffed_nack = NULL;
+//
+//    char err[128];
+//    if ( (handle_sniffed_nack = pcap_open_live("eth0", BUFSIZ, 1, 100, err)) == NULL ) {
+//		fprintf(stderr, "Error opening device %s, with error message %s\n", "eth0", err);
 //		exit(1);
 //	}
 //	printf( "DONE\n");
 //
-//	pcap_loop(handle_sniffed , -1, process_packet , NULL);	// -1 means an infinite loop
-//
-//
-//    pcap_close(handle_sniffed);
-    printf("Send nack for seqnum : %d \n", seqNum);
+//	//pcap_loop(handle_sniffed_nack , -1, process_packet , NULL);	// -1 means an infinite loop
+
+    fprintf(stdout, "Send nack for seqnum : %d to %d \n", seqNum, dest_addr);
     int n, ret;
     u_char packet[PACKET_BUF_SIZE];
     n = generate_route_on_resend_packet(packet, 70, ROUTE_ON_RELIABLE, seqNum);
-    //print_dummy_packet(packet, n);
+   // print_dummy_packet(packet, n);
     if ((ret = pcap_inject(handle_sniffed, packet, n)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
@@ -324,7 +329,6 @@ int generate_route_on_resend_packet(u_char* packetOut, int size, int type, int s
     printf("generating resend packets...\n");
     hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
     payload_size = size - hdrlen;
-    printf("Size :%d, Header len: %d, Payload size : %d SeqNo: %d\n", size, hdrlen, payload_size, seqNum);
     struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
     rlh->port = (u_int8_t)(port & 0xff);
     rlh->seq = (u_int16_t)(seqNum & 0xffff);
@@ -381,7 +385,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Error scanning devices, with error code %d, and error message %s\n", ret, err);
 		exit(1);
 	}
-	printf("DONE\n");
+	printf("SCANNING DONE\n");
 
 	printf("Here are the available devices:\n");
 	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
@@ -403,14 +407,14 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
 		exit(1);
 	}
-	printf( "DONE\n");
+	fprintf(stdout, "OPENING DEVICE DONE\n");
 
 	ret = pcap_loop(handle_sniffed, -1, process_packet , NULL);	// -1 means an infinite loop
     printf("Ret : %d \n", ret);
 
     pcap_close(handle_sniffed);
-	printf( "DONE\n");
-	printf( "END OF TEST\n");
+	fprintf(stdout, "ALL PROCESSING DONE\n");
+	fprintf(stdout, "END OF TEST\n");
     pthread_join(nack_thread, NULL);
     return 0;
 }
