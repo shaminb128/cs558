@@ -29,7 +29,8 @@ typedef struct sniff {
 	int tid;
 	int iface_cnt;
 	char dev_name[50];
-	pcap_t** handler_list;
+	char dev_list[5][20];
+	pcap_t* handler_list[5];
 	struct localIface myIface;
 	FILE* logfile;
 }sniff_t;
@@ -84,8 +85,13 @@ int main (int argc, char** argv) {
 	for (i = 0; i < count; i++) {
 		sniff_args[i].tid = i;
 		sniff_args[i].iface_cnt = count;
-		sniff_args[i].handler_list = handler_list;
+		//sniff_args[i].handler_list = handler_list;
+		//sniff_args[i].dev_list = devices;
 		strcpy(sniff_args[i].dev_name, devices[i]);
+		int j;
+		for (j = 0; j < count; j++) {
+			strcpy((sniff_args[i].dev_list)[j], devices[j]);
+		}
 		sniff_args[i].myIface.myaddr = (u_int16_t)(((i+1) << 4) | 0x0002);
 	}
 	for(i = 0; i < count; i++) {
@@ -117,18 +123,32 @@ void sniffer(void* param) {
 	char filename[20];
 	char err[128];
 	pcap_t *pcap_handle = NULL;
+	pcap_t *pcap_private = NULL;
+	int i;
 	sprintf(filename, "iface_%04x.log", (data->myIface).myaddr);
 	if ( (data->logfile = fopen(filename, "w")) == NULL) {
 		fprintf(stderr, "Error opening packets.log\n");
 		exit(1);
 	}
+	fprintf(stdout, "thread %d: iface: %s, devices: %s, %s, %s, %s\n", data->tid, data->dev_name, (data->dev_list)[0], (data->dev_list)[1], (data->dev_list)[2], (data->dev_list)[3]);
 
 	if ( (pcap_handle = pcap_open_live(data->dev_name, BUFSIZ, 1, 100, err)) == NULL ) {
 		fprintf(stderr, "thread %d: Error opening device %s, with error message %s\n", data->tid, data->dev_name, err);
 		exit(1);
 	}
     (data->myIface).handler = pcap_handle;
-    (data->handler_list)[data->tid] = pcap_handle;
+    //(data->handler_list)[data->tid] = pcap_handle;
+    for (i = 0; i < data->iface_cnt; i++) {
+    	if (i != data->tid) {
+    		if ( (pcap_private = pcap_open_live((data->dev_list)[i], BUFSIZ, 1, 100, err)) == NULL ) {
+				fprintf(stderr, "thread %d: Error opening device %s, with error message %s\n", data->tid, (data->dev_list)[i], err);
+				exit(1);
+			}
+			(data->handler_list)[i] = pcap_private;
+			fprintf(stdout, "thread %d: added private handle for iface %s\n", data->tid, (data->dev_list)[i]);
+
+    	}
+    }
     fprintf(stdout, "thread %d: START, iface information:\nDev %d, name: %s, assigned address: %04x\n",data->tid, data->tid, data->dev_name, (data->myIface).myaddr);
 	pcap_loop(pcap_handle , -1 , process_packet , (u_char*)data );	// -1 means an infinite loop
 	fclose(data->logfile);
@@ -179,6 +199,8 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 			break;
 		case P_NOT_YET_IMPLEMENTED:
 			fprintf(stdout, "thread %d: received a P_NOT_YET_IMPLEMENTED packet. Protocol Not Supported\n", data->tid);
+			break;
+		case P_DO_NOTHING:
 			break;
 		default:
 			fprintf(stderr, "thread %d: ERROR: come to default routine, with return code %d.\n", data->tid, ret);

@@ -83,6 +83,9 @@ int routing_opt(u_char* packet, u_int16_t myaddr) {
 		}
 	} else {
 		// sending to somewhere else
+		if (((rth->daddr) & 0x00f0) == (myaddr & 0x00f0)) {
+			return P_DO_NOTHING;
+		}
 		if (rth->ttl == 1) {
 			return P_TIMEOUT;
 		} else {

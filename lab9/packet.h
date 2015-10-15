@@ -36,7 +36,7 @@
  		u_int8_t		port;			/* application instance port */
  		u_int8_t		dummy;
  		u_int16_t		check;			/* reliable transfer protocol header + data checksum */
- 		u_int16_t		seq;			/* transfer sequence number */
+ 		u_int32_t		seq;			/* transfer sequence number */
 
  	} rlhdr_t;
 
