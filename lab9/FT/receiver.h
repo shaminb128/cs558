@@ -29,7 +29,7 @@ void* handleFailures(void *);
 int check_all_pckt_rcvd();
 int getNackSeqNum();
 void send_nack_to_client(int, pcap_t *);
-void send_end();
+void send_end( pcap_t *);
 int generate_route_on_resend_packet(u_char*, int , int , int);
 
 //threads

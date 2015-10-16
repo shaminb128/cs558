@@ -30,6 +30,55 @@ size_t filesize;
 char *data;
 int no_of_packets;
 pcap_t *handle_sniffed = NULL;
+pcap_t *handle_sniffed_nack = NULL;
+
+char device_name[10];
+void print_dummy_packet(const u_char* data, int size){
+	int i , j;
+	printf("============================== here is a packet of size %d ==============================\n", size);
+	for(i=0 ; i < size ; i++) {
+    if( i!=0 && i%16==0)   //if one line of hex printing is complete...
+    {
+      fprintf(stdout , "         ");
+      for(j=i-16 ; j<i ; j++)
+      {
+        if(data[j]>=32 && data[j]<=128)
+          fprintf(stdout , "%c",(unsigned char)data[j]); //if its a number or alphabet
+
+        else fprintf(stdout , "."); //otherwise print a dot
+      }
+      fprintf(stdout , "\n");
+    }
+
+    if(i%16==0) fprintf(stdout , "   ");
+      fprintf(stdout , " %02X",(unsigned int)data[i]);
+
+    if( i==size-1)  //print the last spaces
+    {
+      for(j=0;j<15-i%16;j++)
+      {
+        fprintf(stdout , "   "); //extra spaces
+      }
+
+      fprintf(stdout , "         ");
+
+      for(j=i-i%16 ; j<=i ; j++)
+      {
+        if(data[j]>=32 && data[j]<=128)
+        {
+          fprintf(stdout , "%c",(unsigned char)data[j]);
+        }
+        else
+        {
+          fprintf(stdout , ".");
+        }
+      }
+
+      fprintf(stdout ,  "\n" );
+    }
+  }
+	printf("============================== end of packet ==============================\n\n\n\n\n\n");
+}
 
 void init(){
     my_addr = 0x0011;
@@ -88,7 +137,7 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 			//printf("Size :%d, Header len: %d, Payload size : %d SeqNo: %d\n", size, hdrlen, payload_size, seqNum);
 			struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 			rlh->port = (u_int8_t)(port & 0xff);
-			rlh->seq = (u_int32_t)(seqNum & 0xffff);
+			rlh->seq = (u_int32_t)(seqNum & 0xffffffff);
             memcpy(packetOut + hdrlen, payload, payload_size);
 
             rlh->check = htons(packet_chk_gen(packetOut, size));
@@ -101,25 +150,6 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 	return size;
 }
 
-void* resend_packet(void* a)
-{
-//    while(1){
-//        int n, seq , size=PAYLOAD_SIZE;
-//        n = recvfrom(sockfd,&seq,sizeof(int),0,(struct sockaddr *)&serv_addr,&fromlen);
-//        if (n < 0) errorMsg("recvfrom");
-//        if(seq == -1){
-//            printf("Entire file transmitted\n");
-//            pthread_exit(0);
-//        }
-//        if((seq == (no_of_packets-1)) && (0 != filesize % PAYLOAD_SIZE))
-//            size = filesize % PAYLOAD_SIZE;
-//        packet packet2;
-//        memset(packet2.payload,'\0',PAYLOAD_SIZE+1);
-//        packet2.seq_num = seq;
-//        memcpy(packet2.payload,data+(seq*PAYLOAD_SIZE),size);
-//        send_packets(packet2);
-//    }
-}
 
 void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet_n) {
 
@@ -146,10 +176,16 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     exit(1);
                 }
                 printf("Received NACK for %d with payload %d and size %d\n", rlh->seq, packetIn[hdrlen], size);
+                //print_rl_packet(stdout, packetIn, size);
                 if(packetIn[hdrlen] != 0)    //Not a nack packet
                     return;
                 int seqNum = rlh->seq;
-
+                int dummy = rlh->dummy;
+                fprintf(stdout, "Dummy %d \n", dummy);
+                if(dummy == 1){
+                    fprintf(stdout, "FILE SENT \n");
+                    exit(1);
+                }
 
                 u_char packetOut[PACKET_BUF_SIZE];
                 char payload[PAYLOAD_SIZE];
@@ -161,8 +197,9 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                 //fseek(fp_read, seqNum * PAYLOAD_SIZE, SEEK_SET);
                 memcpy(payload, data + (seqNum * PAYLOAD_SIZE), payload_size);
                 int pktlen = generate_route_on_file_packet(packetOut, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
-
-                if ((ret = pcap_inject(handle_sniffed, packetOut, pktlen)) != pktlen){
+               // print_dummy_packet(packetOut, pktlen);
+                //print_rl_packet(stdout, packetOut, pktlen);
+                if ((ret = pcap_inject(handle_sniffed_nack, packetOut, pktlen)) != pktlen){
                     fprintf(stderr, "Fail to inject packet\n");
                     fprintf("Only %d inserted \n", ret);
                 // exit(1);
@@ -175,6 +212,23 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 
 	}
 }
+
+void* resend_packet(void* a)
+{
+
+    char err[128];
+    if ( (handle_sniffed_nack = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {
+		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
+		exit(1);
+	}
+	printf( "OPEN DONE\n");
+	pcap_loop(handle_sniffed_nack , -1, process_packet , NULL);	// use it to receive NACK
+    while(1){
+        //fprintf(stdout, "insdide thread\n");
+    }
+    pcap_close(handle_sniffed_nack);
+}
+
 
 void mapfile(char *filename){
     pthread_mutex_lock(&lock);
@@ -202,7 +256,7 @@ int main(int argc, char *argv[])
 
 
 	char err[128];						// Holds the error
-	char device_name[10];
+
 	//char devices[10][64];				// For holding all available
 	int count = 0;
 	int ret = 0;
@@ -242,11 +296,11 @@ int main(int argc, char *argv[])
 
 	printf("generating packets...\n");
 
-	//Create thread to handle resend
-//	if((pthread_create(&resend_thread, NULL, resend_packet, NULL)) != 0){
-//        fprintf(stderr, "error in creating pthread. n");
-//        exit(1);
-//    }
+//	Create thread to handle resend
+	if((pthread_create(&resend_thread, NULL, resend_packet, NULL)) != 0){
+        fprintf(stderr, "error in creating pthread. n");
+        exit(1);
+    }
 
     u_char packet[PACKET_BUF_SIZE];
     char payload[PAYLOAD_SIZE];
@@ -298,13 +352,15 @@ int main(int argc, char *argv[])
         }
         seqNum++;
     }
-    pcap_loop(handle_sniffed , -1, process_packet , NULL);	// use it to receive NACK
+
     printf("\n");
 
+
+    pthread_join(resend_thread, NULL);
     pcap_close(handle_sniffed);
+    pcap_close(handle_sniffed_nack);
     munmap(data, filesize);
     close(fp);
-   // pthread_join(resend_thread, NULL);
-    printf( "DONE\n");
+    printf( "ALL DONE\n");
     return 1;
 }

@@ -34,6 +34,7 @@ int *track_packets;
 int startCallback;
 int loop_index;
 int total = 0, ur_total = 0;
+int dummy = 1;
 
 char device_name[10];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
@@ -205,10 +206,10 @@ void write_re_to_file(u_char * payload, int payload_size, int seqNum){
     fwrite(payload , payload_size , 1 , fp_write);
     fflush(fp_write);
     total++;
-    printf("total : %d\n", total);
+    fprintf(stdout, "total : %d\n", total);
     if(total == packets_num){
-        printf("File successfully written \n");
-        printTime();
+        fprintf(stdout, "File successfully written \n");
+
         fclose(fp_write);
         fprintf(stdout, "FILE WRITING DONE\n");
         exit(1);
@@ -237,13 +238,15 @@ void* handleFailures(void *a)
 		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
 		exit(1);
 	}
-	printf( "DONE\n");
+	printf( "OPEN DONE\n");
     while(1)
     {       if(startCallback){
                 if(check_all_pckt_rcvd() == 1){
+                send_end(handle_sniffed_nack);
+                pcap_close(handle_sniffed_nack);
                 pthread_exit(0);
                 }
-                usleep(200);
+                usleep(100);
                 int i;
                 for(i = start_index; i < packets_num ; i++)
                     {
@@ -261,6 +264,7 @@ void* handleFailures(void *a)
             }
 
         }
+
 }
 
 int getNackSeqNum(){
@@ -300,14 +304,22 @@ int check_all_pckt_rcvd()
     else return 0;
 }
 
-void send_end(){
+void send_end( pcap_t *handle_sniffed_nack){
 
-//    int end_data = -1;
-//    int n,i;
-//
-//        for (i = 0 ; i < 10 ; i++){
-//        n = sendto(sockfd_s,&end_data,sizeof(int), 0,(struct sockaddr *) &from,fromlen);
-//        }
+    int n, ret, i;
+    u_char packet[PACKET_BUF_SIZE];
+    int seqNum = -1;
+
+    n = generate_route_on_resend_packet(packet, 70, ROUTE_ON_RELIABLE, seqNum);
+   // print_dummy_packet(packet, n);
+    fprintf(stdout, "Send End atleaast 10 times to %d of size %d\n", dest_addr, n);
+    for (i = 0; i < 10; i++){
+        if ((ret = pcap_inject(handle_sniffed_nack, packet, n)) < 0){
+            fprintf(stderr, "Fail to inject packet\n");
+		// exit(1);
+        }
+    }
+
 
 }
 
@@ -331,7 +343,13 @@ int generate_route_on_resend_packet(u_char* packetOut, int size, int type, int s
     payload_size = size - hdrlen;
     struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
     rlh->port = (u_int8_t)(port & 0xff);
+    if(seqNum == -1){
+        rlh->dummy = dummy;
+    }
+    else{
     rlh->seq = (u_int32_t)(seqNum & 0xffffffff);
+    }
+
     for (i = hdrlen; i < size; i++) {
         packetOut[i] = (u_char) (0x00000000 & 0x000000ff);
     }
