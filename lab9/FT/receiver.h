@@ -17,9 +17,6 @@
 #include "../routing.h"
 # define PAYLOAD_SIZE 1400
 
-#define TRACK_ARRAY_LENGTH 8000000
-
-
 //methods
 void init();
 void write_ur_to_file(u_char *, int);

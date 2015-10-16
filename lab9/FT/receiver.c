@@ -122,9 +122,10 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int size = (int) header->len;
 	int ret = 0, hdrlen, payload_size;
 	fprintf(stdout,"PP from %d with size %d\n", rth->saddr, size);
-	if(rth->saddr == my_addr)
+	if(rth->saddr == my_addr){
+        fprintf(stdout, "Wrong addr \n");
         return;
-
+	}
 
 	ret = routing_opt(packetIn, my_addr);
 	//printf("Routing opt is %d \n", ret);
@@ -336,7 +337,12 @@ int generate_route_on_resend_packet(u_char* packetOut, int size, int type, int s
 	rth->ttl = (u_int8_t)(0x10 & 0xff);
 	rth->protocol = (u_int8_t)type;
 	rth->size = htons((u_int16_t)size);
+	rth->dummy[0] = 0x00;
+	rth->dummy[1] = 0x00;
+	rth->dummy[2] = 0x80;
+	rth->dummy[3] = 0x00;
 	rth->check = htons(rthdr_chk_gen(rth));
+
 	int i, hdrlen, payload_size;
     printf("generating resend packets...\n");
     hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
@@ -345,6 +351,7 @@ int generate_route_on_resend_packet(u_char* packetOut, int size, int type, int s
     rlh->port = (u_int8_t)(port & 0xff);
     if(seqNum == -1){
         rlh->dummy = dummy;
+        print_dummy_packet(packetOut, size);
     }
     else{
     rlh->seq = (u_int32_t)(seqNum & 0xffffffff);
@@ -429,9 +436,9 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-	ret = pcap_loop(handle_sniffed, -1, process_packet , NULL);	// -1 means an infinite loop
-    printf("Ret : %d \n", ret);
-
+	pcap_loop(handle_sniffed, -1, process_packet , NULL);	// -1 means an infinite loop
+    //printf("Ret : %d \n", ret);
+    fprintf(stdout, "test pcap loop\n");
     pcap_close(handle_sniffed);
 	fprintf(stdout, "ALL PROCESSING DONE\n");
 	fprintf(stdout, "END OF TEST\n");

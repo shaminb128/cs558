@@ -24,9 +24,8 @@
 #include "../packet_util.h"
 
 # define PAYLOAD_SIZE 1400
-# define UR_HEADER_SIZE 14
-# define RE_HEADER_SIZE 18
-
+# define UR_HEADER_SIZE sizeof(struct rthdr) + sizeof(struct urhdr)
+# define RE_HEADER_SIZE sizeof(struct rthdr) + sizeof(struct rlhdr)
 //Function declaration
 void init();
 int generate_route_on_file_packet(u_char* ,char *, int , int, int );

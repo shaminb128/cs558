@@ -15,7 +15,8 @@
  		u_int8_t		protocol;		/* route-on team defined protocol */
  		u_int16_t		size;			/* packet length */
  		u_int16_t		check;			/* routing protocol header checksum */
- 	} rthdr_t;
+ 		unsigned char	dummy[4];
+ 	}  rthdr_t;
 
  	/* Control protocol header */
  	typedef struct chdr {
@@ -46,7 +47,7 @@
 
  	#define PACKET_BUF_SIZE			1600							/* packet buffer size */
  	#define MTU						1514							/* max transfer unit */
- 	#define MAX_APP_PKT_LEN			MTU - sizeof(struct rthdr)		/* max data an application can send (including its header) */ 
+ 	#define MAX_APP_PKT_LEN			MTU - sizeof(struct rthdr)		/* max data an application can send (including its header) */
  	#define MIN_APP_PKT_LEN			60 - sizeof(struct rthdr)		/* min data an application can send (including its header) */
 
  #endif

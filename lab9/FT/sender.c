@@ -108,8 +108,13 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 	rth->ttl = (u_int8_t)(0x10 & 0xff);
 	rth->protocol = (u_int8_t)type;
 	rth->size = htons((u_int16_t)size);
+	rth->dummy[0] = 0x00;
+	rth->dummy[1] = 0x00;
+	rth->dummy[2] = 0x80;
+	rth->dummy[3] = 0x00;
 	rth->check = htons(rthdr_chk_gen(rth));
-	//memcpy(&rth, packetOut, sizeof(struct rthdr));
+
+  	//memcpy(&rth, packetOut, sizeof(struct rthdr));
 	//print_data(stdout, packetOut, size);
 	int i, hdrlen, payload_size;
 
@@ -138,10 +143,11 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 			struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 			rlh->port = (u_int8_t)(port & 0xff);
 			rlh->seq = (u_int32_t)(seqNum & 0xffffffff);
+			//rlh->dummy = (u_int8_t)(0xff);
             memcpy(packetOut + hdrlen, payload, payload_size);
 
             rlh->check = htons(packet_chk_gen(packetOut, size));
-            fprintf(stdout, "Send R_Seq #: %d to %d\n", rlh->seq , rth->daddr   );
+            fprintf(stdout, "Send R_Seq #: %d of size %d to %d\n", rlh->seq, size, rth->daddr   );
 			break;
 		default:
 			fprintf(stderr, "ERROR: protocol not supported\n");
@@ -183,6 +189,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                 int dummy = rlh->dummy;
                 fprintf(stdout, "Dummy %d \n", dummy);
                 if(dummy == 1){
+                    print_dummy_packet(packetIn, size);
                     fprintf(stdout, "FILE SENT \n");
                     exit(1);
                 }
@@ -242,10 +249,8 @@ void mapfile(char *filename){
     data = mmap((caddr_t)0, filesize, PROT_READ, MAP_SHARED, fp, 0);
     if (data == (caddr_t)(-1)) {
         fprintf(stdout, "MMAP ERROR");
-        pthread_mutex_unlock(&lock);
         exit(0);
     }
-    pthread_mutex_unlock(&lock);
 }
 
 
