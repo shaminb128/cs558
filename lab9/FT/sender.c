@@ -88,7 +88,7 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 			//printf("Size :%d, Header len: %d, Payload size : %d SeqNo: %d\n", size, hdrlen, payload_size, seqNum);
 			struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
 			rlh->port = (u_int8_t)(port & 0xff);
-			rlh->seq = (u_int16_t)(seqNum & 0xffff);
+			rlh->seq = (u_int32_t)(seqNum & 0xffff);
             memcpy(packetOut + hdrlen, payload, payload_size);
 
             rlh->check = htons(packet_chk_gen(packetOut, size));
@@ -145,7 +145,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     fprintf(stderr, "Requesting port %d doesnot match my port %d\n", rlh->port, port);
                     exit(1);
                 }
-                printf("Received NACK for %d with payload %d\n", seqNum, packetIn[hdrlen]);
+                printf("Received NACK for %d with payload %d and size %d\n", rlh->seq, packetIn[hdrlen], size);
                 if(packetIn[hdrlen] != 0)    //Not a nack packet
                     return;
                 int seqNum = rlh->seq;
@@ -167,7 +167,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     fprintf("Only %d inserted \n", ret);
                 // exit(1);
                 }
-                fprintf(stdout, "Send R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);
+                fprintf(stdout, "Sent R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);
 
 
         default:

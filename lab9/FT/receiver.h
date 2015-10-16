@@ -28,7 +28,7 @@ int updateTrackPacketsArray();
 void* handleFailures(void *);
 int check_all_pckt_rcvd();
 int getNackSeqNum();
-void send_nack_to_client(int);
+void send_nack_to_client(int, pcap_t *);
 void send_end();
 int generate_route_on_resend_packet(u_char*, int , int , int);
 

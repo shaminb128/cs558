@@ -25,7 +25,7 @@
 
 # define PAYLOAD_SIZE 1400
 # define UR_HEADER_SIZE 14
-# define RE_HEADER_SIZE 16
+# define RE_HEADER_SIZE 18
 
 //Function declaration
 void init();

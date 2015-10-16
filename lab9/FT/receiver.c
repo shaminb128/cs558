@@ -35,6 +35,7 @@ int startCallback;
 int loop_index;
 int total = 0, ur_total = 0;
 
+char device_name[10];
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 void print_dummy_packet(const u_char* data, int size){
@@ -119,7 +120,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	char err[128];
 	int size = (int) header->len;
 	int ret = 0, hdrlen, payload_size;
-	fprintf(stdout,"PP from %d\n", rth->saddr);
+	fprintf(stdout,"PP from %d with size %d\n", rth->saddr, size);
 	if(rth->saddr == my_addr)
         return;
 
@@ -149,6 +150,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     case ROUTE_ON_RELIABLE:
                         pthread_mutex_lock(&lock);
                         hdrlen = sizeof(struct rthdr) + sizeof(struct rlhdr);
+                        //printf("hdrlen : %d \n", hdrlen);
                         struct rlhdr* rlh = (struct rlhdr*)(packetIn + sizeof(struct rthdr));
 
                         if(rlh->port != port){
@@ -228,6 +230,14 @@ int updateTrackPacketsArray(int seq_num){
 
 void* handleFailures(void *a)
 {
+    pcap_t *handle_sniffed_nack = NULL;
+
+    char err[128];
+    if ( (handle_sniffed_nack = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {
+		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
+		exit(1);
+	}
+	printf( "DONE\n");
     while(1)
     {       if(startCallback){
                 if(check_all_pckt_rcvd() == 1){
@@ -246,7 +256,7 @@ void* handleFailures(void *a)
                 int reqSeqNum = getNackSeqNum();
 
                 if(reqSeqNum >= 0 && reqSeqNum < packets_num){
-                send_nack_to_client(reqSeqNum);
+                send_nack_to_client(reqSeqNum, handle_sniffed_nack);
                 }
             }
 
@@ -270,25 +280,15 @@ int getNackSeqNum(){
     return -1;
 }
 
-void send_nack_to_client(int seqNum)
+void send_nack_to_client(int seqNum, pcap_t *handle_sniffed_nack)
 {
-//    pcap_t *handle_sniffed_nack = NULL;
-//
-//    char err[128];
-//    if ( (handle_sniffed_nack = pcap_open_live("eth0", BUFSIZ, 1, 100, err)) == NULL ) {
-//		fprintf(stderr, "Error opening device %s, with error message %s\n", "eth0", err);
-//		exit(1);
-//	}
-//	printf( "DONE\n");
-//
-//	//pcap_loop(handle_sniffed_nack , -1, process_packet , NULL);	// -1 means an infinite loop
 
-    fprintf(stdout, "Send nack for seqnum : %d to %d \n", seqNum, dest_addr);
     int n, ret;
     u_char packet[PACKET_BUF_SIZE];
     n = generate_route_on_resend_packet(packet, 70, ROUTE_ON_RELIABLE, seqNum);
    // print_dummy_packet(packet, n);
-    if ((ret = pcap_inject(handle_sniffed, packet, n)) < 0){
+   fprintf(stdout, "Send nack for seqnum : %d to %d of size %d\n", seqNum, dest_addr, n);
+    if ((ret = pcap_inject(handle_sniffed_nack, packet, n)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
         }
@@ -331,7 +331,7 @@ int generate_route_on_resend_packet(u_char* packetOut, int size, int type, int s
     payload_size = size - hdrlen;
     struct rlhdr* rlh = (struct rlhdr*)(packetOut + sizeof(struct rthdr));
     rlh->port = (u_int8_t)(port & 0xff);
-    rlh->seq = (u_int16_t)(seqNum & 0xffff);
+    rlh->seq = (u_int32_t)(seqNum & 0xffffffff);
     for (i = hdrlen; i < size; i++) {
         packetOut[i] = (u_char) (0x00000000 & 0x000000ff);
     }
@@ -360,19 +360,14 @@ int main(int argc, char *argv[])
 
     init();
 
- //    thread to handle failures
-    if((pthread_create(&nack_thread, NULL, handleFailures, NULL )) != 0){
-        fprintf(stderr, "pthread_create[0] \n");
-        pthread_exit(0);
-        exit(1);
-    }
+
 
 	pcap_if_t *device_list = NULL;		// Linked list of all devices discovered
 	pcap_if_t *device_ptr = NULL;		// Pointer to a single device
     //handle_sniffed = (pcap_t *) malloc(sizeof (pcap_t));
 
 	char err[128];						// Holds the error
-	char device_name[10];
+
 	//char devices[10][64];				// For holding all available
 	int count = 0;
 	int ret = 0;
@@ -408,6 +403,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	fprintf(stdout, "OPENING DEVICE DONE\n");
+
+    //    thread to handle failures
+    if((pthread_create(&nack_thread, NULL, handleFailures, NULL )) != 0){
+        fprintf(stderr, "pthread_create[0] \n");
+        pthread_exit(0);
+        exit(1);
+    }
 
 	ret = pcap_loop(handle_sniffed, -1, process_packet , NULL);	// -1 means an infinite loop
     printf("Ret : %d \n", ret);
