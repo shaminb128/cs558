@@ -147,7 +147,7 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
             memcpy(packetOut + hdrlen, payload, payload_size);
 
             rlh->check = htons(packet_chk_gen(packetOut, size));
-            fprintf(stdout, "Send R_Seq #: %d of size %d to %d\n", rlh->seq, size, rth->daddr   );
+            //fprintf(stdout, "Send R_Seq #: %d of size %d to %d\n", rlh->seq, size, rth->daddr   );
 			break;
 		default:
 			fprintf(stderr, "ERROR: protocol not supported\n");
@@ -179,17 +179,18 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 
                 if(rlh->port != port){
                     fprintf(stderr, "Requesting port %d doesnot match my port %d\n", rlh->port, port);
-                    exit(1);
+                    //exit(1);
+                    return;
                 }
-                printf("Received NACK for %d with payload %d and size %d\n", rlh->seq, packetIn[hdrlen], size);
+               // printf("Received NACK for %d with payload %d and size %d\n", rlh->seq, packetIn[hdrlen], size);
                 //print_rl_packet(stdout, packetIn, size);
                 if(packetIn[hdrlen] != 0)    //Not a nack packet
                     return;
                 int seqNum = rlh->seq;
                 int dummy = rlh->dummy;
-                fprintf(stdout, "Dummy %d \n", dummy);
+               // fprintf(stdout, "Dummy %d \n", dummy);
                 if(dummy == 1){
-                    print_dummy_packet(packetIn, size);
+                    //print_dummy_packet(packetIn, size);
                     fprintf(stdout, "FILE SENT \n");
                     exit(1);
                 }
@@ -211,7 +212,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     fprintf("Only %d inserted \n", ret);
                 // exit(1);
                 }
-                fprintf(stdout, "Sent R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);
+                //fprintf(stdout, "Sent R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);
 
 
         default:
@@ -228,7 +229,7 @@ void* resend_packet(void* a)
 		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
 		exit(1);
 	}
-	printf( "OPEN DONE\n");
+	//printf( "OPEN DONE\n");
 	pcap_loop(handle_sniffed_nack , -1, process_packet , NULL);	// use it to receive NACK
     while(1){
         //fprintf(stdout, "insdide thread\n");
@@ -269,14 +270,14 @@ int main(int argc, char *argv[])
 
 	srand(time(NULL));
 
-	printf("Scanning available devices ... ");
+	//printf("Scanning available devices ... ");
 	if ( (ret = pcap_findalldevs(&device_list, err)) != 0 ) {
 		fprintf(stderr, "Error scanning devices, with error code %d, and error message %s\n", ret, err);
 		exit(1);
 	}
-	printf("DONE\n");
+	//printf("DONE\n");
 
-	printf("Here are the available devices:\n");
+	//printf("Here are the available devices:\n");
 	for (device_ptr = device_list; device_ptr != NULL; device_ptr = device_ptr->next) {
 		if (device_ptr->name != NULL && !strncmp(device_ptr->name, "eth", 3)){
 			char ipaddr[20];
@@ -299,7 +300,7 @@ int main(int argc, char *argv[])
 	fprintf(stdout, "OPEN DONE \n");
 	printTime();
 
-	printf("generating packets...\n");
+	//printf("generating packets...\n");
 
 //	Create thread to handle resend
 	if((pthread_create(&resend_thread, NULL, resend_packet, NULL)) != 0){
@@ -350,7 +351,7 @@ int main(int argc, char *argv[])
         //change for RELIABLE/UNRELIABLE
         //int pktlen = generate_route_on_file_packet(packet, payload, payload_size + UR_HEADER_SIZE, ROUTE_ON_UNRELIABLE );
         int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
-        fprintf(stdout, "%d, ", seqNum);
+        //fprintf(stdout, "%d, ", seqNum);
         if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
