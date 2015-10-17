@@ -14,6 +14,7 @@
 #include <linux/sockios.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <time.h>
 #include "sender.h"
 #include "../routing.h"
 #include "../printp.h"
@@ -31,6 +32,8 @@ char *data;
 int no_of_packets;
 pcap_t *handle_sniffed = NULL;
 pcap_t *handle_sniffed_nack = NULL;
+struct timespec start, stop;
+double time_e;
 
 char device_name[10];
 void print_dummy_packet(const u_char* data, int size){
@@ -191,7 +194,11 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                // fprintf(stdout, "Dummy %d \n", dummy);
                 if(dummy == 1){
                     //print_dummy_packet(packetIn, size);
-                    fprintf(stdout, "FILE SENT \n");
+                    fprintf(stdout, "TOTAL PACKETS TRANSMITTED: %d\n", no_of_packets);
+                    printTime();
+                    if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
+                    time_e = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
+                    printf("TOTAL EXECUTION TIME %f \n", time_e);
                     exit(1);
                 }
 
@@ -299,6 +306,7 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stdout, "OPEN DONE \n");
 	printTime();
+	if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
 
 	//printf("generating packets...\n");
 

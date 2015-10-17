@@ -172,7 +172,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                         }
                         pthread_mutex_unlock(&lock);
 
-                        if(last_index >= 0.8 * packets_num)
+                        if(last_index >= 0.7 * packets_num)
                             startCallback = 1;
 
                         break;
@@ -214,7 +214,7 @@ void write_re_to_file(u_char * payload, int payload_size, int seqNum){
         fprintf(stdout, "FILE WRITING DONE\n");
         printTime();
         fclose(fp_write);
-        exit(1);
+        //exit(1);
     }
 }
 
@@ -246,6 +246,7 @@ void* handleFailures(void *a)
                 if(check_all_pckt_rcvd() == 1){
                 send_end(handle_sniffed_nack);
                 pcap_close(handle_sniffed_nack);
+                pcap_close(handle_sniffed);
                 pthread_exit(0);
                 }
                 usleep(100);
@@ -440,7 +441,7 @@ int main(int argc, char *argv[])
 	pcap_loop(handle_sniffed, -1, process_packet , NULL);	// -1 means an infinite loop
     //printf("Ret : %d \n", ret);
     //fprintf(stdout, "test pcap loop\n");
-    pcap_close(handle_sniffed);
+    //pcap_close(handle_sniffed);
 	fprintf(stdout, "ALL PROCESSING DONE\n");
 	fprintf(stdout, "END OF TEST\n");
     pthread_join(nack_thread, NULL);

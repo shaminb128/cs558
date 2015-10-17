@@ -4,7 +4,7 @@ receiver.o: receiver.c ../packet.h ../printp.h ../routing.h
 	gcc -g -c -Wall receiver.c
 
 sender: sender.o routing.o packet_util.o printp.o
-	gcc -o sender -g -pthread sender.o packet_util.o printp.o routing.o -lpthread -lpcap
+	gcc -o sender -g -pthread sender.o packet_util.o printp.o routing.o -lpthread -lpcap -lrt
 sender.o: sender.c ../packet.h ../printp.h ../routing.h
 	gcc -g -c -Wall sender.c
 routing.o: ../routing.c ../routing.h ../packet.h
