@@ -216,7 +216,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                 //print_rl_packet(stdout, packetOut, pktlen);
                 if ((ret = pcap_inject(handle_sniffed_nack, packetOut, pktlen)) != pktlen){
                     fprintf(stderr, "Fail to inject packet\n");
-                    fprintf("Only %d inserted \n", ret);
+                    fprintf(stderr, "Only %d inserted \n", ret);
                 // exit(1);
                 }
                 //fprintf(stdout, "Sent R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);

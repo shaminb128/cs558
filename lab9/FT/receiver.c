@@ -143,7 +143,8 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                         struct urhdr *urh = (struct urhdr*)(packetIn + sizeof(struct rthdr));
                         if(urh->port != port){
                             fprintf(stderr, "Requesting port %d doesnot match my port %d\n", urh->port, port);
-                            exit(1);
+                            //exit(1);
+                            return;
                         }
 
                         payload_size = size - hdrlen;
