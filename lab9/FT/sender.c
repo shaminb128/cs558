@@ -199,6 +199,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
                     time_e = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
                     printf("TOTAL EXECUTION TIME %f \n", time_e);
+                    printf("THROUGHPUT: %f Bytes/s\n", filesize / time_e);
                     exit(1);
                 }
 
@@ -306,7 +307,7 @@ int main(int argc, char *argv[])
 	}
 	fprintf(stdout, "OPEN DONE \n");
 	printTime();
-	if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
+	//if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
 
 	//printf("generating packets...\n");
 
@@ -347,6 +348,7 @@ int main(int argc, char *argv[])
     int seqNum = 0;
     //printf("My Ip: %02x, dest IP : %02x, port no: %d, FS: %d, Packet #: %d\n", my_addr, dest_addr, port, filesize, no_of_packets );
     //printf("Sending RELIABLE packets \n");
+    if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
     while (seqNum < no_of_packets) {
         //fseek(fp_read, offset, SEEK_SET);
         if(seqNum == (no_of_packets-1))
