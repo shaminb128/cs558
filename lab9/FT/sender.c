@@ -206,7 +206,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                 u_char packetOut[PACKET_BUF_SIZE];
                 char payload[PAYLOAD_SIZE];
                 int payload_size;
-                if(seqNum == (no_of_packets-1))
+                if((seqNum == (no_of_packets-1)) && ((filesize % PAYLOAD_SIZE) != 0))
                     payload_size = filesize % PAYLOAD_SIZE;
                 else
                     payload_size = PAYLOAD_SIZE;

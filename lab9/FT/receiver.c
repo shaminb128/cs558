@@ -245,6 +245,7 @@ void* handleFailures(void *a)
     while(1)
     {       if(startCallback){
                 if(check_all_pckt_rcvd() == 1){
+                printf("SEND END\n");
                 send_end(handle_sniffed_nack);
                 pcap_close(handle_sniffed_nack);
                 //pcap_close(handle_sniffed);
@@ -318,7 +319,7 @@ void send_end( pcap_t *handle_sniffed_nack){
     n = generate_route_on_resend_packet(packet, 70, ROUTE_ON_RELIABLE, seqNum);
    // print_dummy_packet(packet, n);
     //fprintf(stdout, "Send End atleaast 10 times to %d of size %d\n", dest_addr, n);
-    for (i = 0; i < 20; i++){
+    for (i = 0; i < 30; i++){
         if ((ret = pcap_inject(handle_sniffed_nack, packet, n)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
