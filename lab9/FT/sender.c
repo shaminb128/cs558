@@ -198,8 +198,8 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     //printTime();
                     if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
                     time_e = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
-                    printf("TOTAL EXECUTION TIME %f \n", time_e);
-                    printf("THROUGHPUT: %f Bytes/s\n", filesize / time_e);
+                    printf("TIME FOR DATA TRANSMISSION ONLY: %f \n", time_e);
+                    //printf("THROUGHPUT: %f Bytes/s\n", filesize / time_e);
                     exit(1);
                 }
 
