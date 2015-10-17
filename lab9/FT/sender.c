@@ -195,7 +195,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                 if(dummy == 1){
                     //print_dummy_packet(packetIn, size);
                     fprintf(stdout, "TOTAL PACKETS TRANSMITTED: %d\n", no_of_packets);
-                    printTime();
+                    //printTime();
                     if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
                     time_e = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
                     printf("TOTAL EXECUTION TIME %f \n", time_e);
@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 	fprintf(stdout, "OPEN DONE \n");
-	printTime();
+	//printTime();
 	//if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
 
 	//printf("generating packets...\n");

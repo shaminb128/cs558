@@ -197,7 +197,7 @@ void write_ur_to_file(u_char * payload, int payload_size){
     if(ur_total == packets_num  ){
         //printf("File successfully written \n");
         fprintf(stdout, "WRITING TO FILE DONE\n");
-        printTime();
+        //printTime();
         fclose(fp_write);
         exit(1);
     }
@@ -213,7 +213,7 @@ void write_re_to_file(u_char * payload, int payload_size, int seqNum){
     if(total == packets_num){
         //fprintf(stdout, "File successfully written \n");
         fprintf(stdout, "FILE WRITING DONE\n");
-        printTime();
+        //printTime();
         fclose(fp_write);
         //exit(1);
     }
@@ -247,8 +247,9 @@ void* handleFailures(void *a)
                 if(check_all_pckt_rcvd() == 1){
                 send_end(handle_sniffed_nack);
                 pcap_close(handle_sniffed_nack);
-                pcap_close(handle_sniffed);
-                pthread_exit(0);
+                //pcap_close(handle_sniffed);
+                exit(1);
+                //pthread_exit(0);
                 }
                 usleep(100);
                 int i;
@@ -443,8 +444,8 @@ int main(int argc, char *argv[])
     //printf("Ret : %d \n", ret);
     //fprintf(stdout, "test pcap loop\n");
     //pcap_close(handle_sniffed);
-	fprintf(stdout, "ALL PROCESSING DONE\n");
-	fprintf(stdout, "END OF TEST\n");
+	//fprintf(stdout, "ALL PROCESSING DONE\n");
+	//fprintf(stdout, "END OF TEST\n");
     pthread_join(nack_thread, NULL);
     return 0;
 }
