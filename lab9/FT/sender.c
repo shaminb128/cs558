@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
     if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
     while (seqNum < no_of_packets) {
         //fseek(fp_read, offset, SEEK_SET);
-        if(seqNum == (no_of_packets-1))
+        if((seqNum == (no_of_packets-1)) && ((filesize % PAYLOAD_SIZE) != 0))
             payload_size = filesize % PAYLOAD_SIZE;
         else
             payload_size = PAYLOAD_SIZE;
