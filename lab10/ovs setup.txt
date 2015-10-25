@@ -30,18 +30,14 @@ make modules_install
 
 #config.sh
 11. Create a new conf file
-     $ sudo touch /usr/local/etc/ovs-vswitchd.conf
+     $ sudo touch /etc/ovs-vswitchd.conf
 
-12. Create the conf lock file
-     $ sudo mkdir -p /usr/local/etc/openvswitch
-
-13. Populate the conf file
-     $ sudo ovsdb-tool create /usr/local/etc/openvswitch/conf.db
-	        ovsdb-tool create /etc/openvswitch/conf.db vswitchd/vswitch.ovsschema (if needed)
+12. Populate the conf file
+       ovsdb-tool create /etc/openvswitch/conf.db vswitchd/vswitch.ovsschema
 
 14. Start openvswitch configuration database
 
-     $ sudo ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock --remote=db:Open_vSwitch,Open_vSwitch,manager_options --private-key=db:Open_vSwitch,SSL,private_key --certificate=db:Open_vSwitch,SSL,certificate --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert --pidfile --detach     
+    ovsdb-server --remote=punix:/var/run/openvswitch/db.sock --remote=db:Open_vSwitch,Open_vSwitch,manager_options --private-key=db:Open_vSwitch,SSL,private_key --certificate=db:Open_vSwitch,SSL,certificate --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert --pidfile --detach   
 
      $ ovs-vsctl --no-wait init   —> this is only needed the first time you install it
      $ ovs-vswitchd --pidfile --detach
