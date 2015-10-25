@@ -37,6 +37,7 @@ make modules_install
 
 13. Populate the conf file
      $ sudo ovsdb-tool create /usr/local/etc/openvswitch/conf.db
+	        ovsdb-tool create /etc/openvswitch/conf.db vswitchd/vswitch.ovsschema (if needed)
 
 14. Start openvswitch configuration database
 

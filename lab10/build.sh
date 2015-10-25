@@ -13,6 +13,7 @@ tc
   --with-linux=/lib/modules/`uname -r`/build
 make
 make install
+modprobe libcrc32c
 insmod datapath/linux/openvswitch.ko
 modinfo datapath/linux/openvswitch.ko
 make modules_install
