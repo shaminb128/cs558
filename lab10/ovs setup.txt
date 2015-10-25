@@ -1,0 +1,46 @@
+wget http://openvswitch.org/releases/openvswitch-1.10.0.tar.gz
+tar -zxvf openvswitch-1.10.0.tar.gz
+cd openvswitch-1.10.0
+
+#install.sh
+apt-get install linux-headers-`uname -r`
+apt-get install build-essential
+apt-get install libssl-dev openssl pkg-config
+apt-get remove bridge-utils
+
+#build.sh
+./boot.sh
+tc
+./configure  \
+  --prefix=/usr   \
+  --bindir=/usr/bin   \
+  --sbindir=/usr/sbin   \
+  --sysconfdir=/etc   \
+  --localstatedir=/var   \
+  --libdir=/usr/lib   \
+  --includedir=/usr/include   \
+  --datarootdir=/usr/share    \
+  --with-linux=/lib/modules/`uname -r`/build
+make
+make install
+insmod datapath/linux/openvswitch.ko
+lsmod | grep switch
+modinfo ./datapath/linux/openvswitch.ko
+make modules_install
+
+#config.sh
+11. Create a new conf file
+     $ sudo touch /usr/local/etc/ovs-vswitchd.conf
+
+12. Create the conf lock file
+     $ sudo mkdir -p /usr/local/etc/openvswitch
+
+13. Populate the conf file
+     $ sudo ovsdb-tool create /usr/local/etc/openvswitch/conf.db
+
+14. Start openvswitch configuration database
+
+     $ sudo ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock --remote=db:Open_vSwitch,Open_vSwitch,manager_options --private-key=db:Open_vSwitch,SSL,private_key --certificate=db:Open_vSwitch,SSL,certificate --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert --pidfile --detach     
+
+     $ ovs-vsctl --no-wait init   —> this is only needed the first time you install it
+     $ ovs-vswitchd --pidfile --detach
