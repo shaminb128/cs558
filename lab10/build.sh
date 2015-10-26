@@ -14,6 +14,7 @@ tc
 make
 make install
 modprobe libcrc32c
+modprobe crc32c
 insmod datapath/linux/openvswitch.ko
 modinfo datapath/linux/openvswitch.ko
 make modules_install

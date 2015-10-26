@@ -1,0 +1,35 @@
+Using OVS
+
+1. Adding a bridge
+ovs-vsctl add-br <bridge name>
+ovs-vsctl show
+ifconfig <bridge name> up
+
+2. connect eth to my bridge
+ovs-vsctl add-port <bridge name> eth0
+ovs-vsctl show
+ping rtr1
+
+3. After this, you wouldnt be able to reach network as your kernel will try to get via eth0 directly. Check route -n
+remove ip configuration of eth0 and provide an IP address to my bridge
+ifconfig eth0 0
+dhclient mybridge
+
+#if this doesnot work, assign a static ip using:
+ifconfig <bridge name> <IP> netmask 255.255.255.0
+Example : ifconfig mybridge 10.1.2.3 netmask 255.255.255.0
+
+ifconfig
+route -n
+ping rtr1
+
+4. Tap Interfaces
+ip tuntap add mode tap vport1 (tunctl -t vport1)
+ip tuntap add mode tap vport2 (tunctl -t vport2)
+
+ifconfig vport1 up
+ifconfig vport2 up
+ifconfig
+
+ovs-vsctl add-port <bridge name> vport1 -- add-port <bridge name> vport2
+
