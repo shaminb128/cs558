@@ -37,9 +37,12 @@ make modules_install
 12. Populate the conf file
        ovsdb-tool create /etc/openvswitch/conf.db vswitchd/vswitch.ovsschema
 
-14. Start openvswitch configuration database
+13. Start openvswitch configuration database
 
     ovsdb-server --remote=punix:/var/run/openvswitch/db.sock --remote=db:Open_vSwitch,Open_vSwitch,manager_options --private-key=db:Open_vSwitch,SSL,private_key --certificate=db:Open_vSwitch,SSL,certificate --bootstrap-ca-cert=db:Open_vSwitch,SSL,ca_cert --pidfile --detach   
 
-     $ ovs-vsctl --no-wait init   —> this is only needed the first time you install it
-     $ ovs-vswitchd --pidfile --detach
+14.   $ ovs-vsctl --no-wait init   —> this is only needed the first time you install it
+15.   $ ovs-vswitchd --pidfile --detach
+
+16. Stop openvswitch
+     $ kill `cd /var/run/openvswitch && cat ovsdb-server.pid ovs-vswitchd.pid`
