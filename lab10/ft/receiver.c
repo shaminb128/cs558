@@ -134,7 +134,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int size = (int) header->len;
 	//print_rl_packet(stdout, packet, size);
 	int ret = 0, hdrlen, payload_size;
-	//fprintf(stdout,"PP from %d with size %d\n", rth->saddr, size);
+	fprintf(stdout,"PP from %d with size %d\n", rth->saddr, size);
 	if(rth->saddr == my_addr){
         //fprintf(stdout, "Wrong addr \n");
         return;
