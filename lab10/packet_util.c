@@ -7,6 +7,7 @@
  #include <stdlib.h>
  #include <string.h>
  #include <netinet/in.h>
+ //#include <net/ethernet.h>
  #include "packet_util.h"
  //#include "printp.h"
 
@@ -144,4 +145,77 @@ int generate_route_on_packet(u_char* packetOut, int size, int type) {
 			return -1;
 	}
 	return size;
+}
+
+int generate_openflow_test_packet(u_char* packetOut, int size, int source, int dest) {
+	int len = (size < 81) ? 81 : size;
+
+	memset(packetOut, 0, sizeof(u_char) * PACKET_BUF_SIZE);
+	struct ethhdr* eth = (struct ethhdr*) packetOut;
+	switch (source) {
+		case 1:
+			eth->h_source[0] = 0x00;
+			eth->h_source[1] = 0x15;
+			eth->h_source[2] = 0x17;
+			eth->h_source[3] = 0x57;
+			eth->h_source[4] = 0xc7;
+			eth->h_source[5] = 0x8a;
+			break;
+		case 2:
+			eth->h_source[0] = 0x00;
+			eth->h_source[1] = 0x15;
+			eth->h_source[2] = 0x17;
+			eth->h_source[3] = 0x57;
+			eth->h_source[4] = 0xc7;
+			eth->h_source[5] = 0xc2;
+			break;
+		case 3:
+			eth->h_source[0] = 0x00;
+			eth->h_source[1] = 0x15;
+			eth->h_source[2] = 0x17;
+			eth->h_source[3] = 0x57;
+			eth->h_source[4] = 0xc6;
+			eth->h_source[5] = 0xf1;
+			break;
+		default:
+			return -1; 
+	}
+
+	switch (dest) {
+		case 1:
+			eth->h_dest[0] = 0x00;
+			eth->h_dest[1] = 0x15;
+			eth->h_dest[2] = 0x17;
+			eth->h_dest[3] = 0x57;
+			eth->h_dest[4] = 0xc7;
+			eth->h_dest[5] = 0x8a;
+			break;
+		case 2:
+			eth->h_dest[0] = 0x00;
+			eth->h_dest[1] = 0x15;
+			eth->h_dest[2] = 0x17;
+			eth->h_dest[3] = 0x57;
+			eth->h_dest[4] = 0xc7;
+			eth->h_dest[5] = 0xc2;
+			break;
+		case 3:
+			eth->h_dest[0] = 0x00;
+			eth->h_dest[1] = 0x15;
+			eth->h_dest[2] = 0x17;
+			eth->h_dest[3] = 0x57;
+			eth->h_dest[4] = 0xc6;
+			eth->h_dest[5] = 0xf1;
+			break;
+		default:
+			return -1; 
+	}
+	eth->h_proto = ETH_P_IP;
+
+	char* content = (char*)(packetOut + ETH_HLEN);
+	sprintf(content, "!!!this is a test packet with length %04d, from node %d to node %d!!!", size, source, dest);
+	int i;
+	for (i = 81; i < len; i++) {
+		packetOut[i] = (u_char) (rand() & 0x000000ff);
+	}
+	return len;
 }
