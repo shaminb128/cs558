@@ -19,5 +19,6 @@
  /* test packet generation */
  int generate_random_packet(u_char* packetOut, int size);
  int generate_route_on_packet(u_char* packetOut, int size, int type);
+ int generate_openflow_test_packet(u_char* packetOut, int size, int source, int dest);
 
  #endif

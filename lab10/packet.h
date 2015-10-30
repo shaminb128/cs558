@@ -9,6 +9,7 @@
 
  #define ETH_ALEN	6		/* Octets in one ethernet addr	 */
  #define ETH_P_IP	0x0800
+ #define ETH_HLEN	14		/* Total octets in header.	 */
 
  typedef struct ethhdr {
 	unsigned char	h_dest[ETH_ALEN];	/* destination eth addr	*/
