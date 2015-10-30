@@ -96,11 +96,11 @@ void init(){
 //        printf("Error getting Remote MAC with value %d \n", ret);
 //    printf("Remote MAC for device %s is %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", device_name, dest_mac[0] , dest_mac[1] , dest_mac[2] , dest_mac[3] , dest_mac[4] , dest_mac[5]);
     dest_mac[0] = 0x00;
-    dest_mac[1] = 0x15;
-    dest_mac[2] = 0x17;
-    dest_mac[3] = 0x5d;
-    dest_mac[4] = 0x2a;
-    dest_mac[5] = 0x0c;
+    dest_mac[1] = 0x04;
+    dest_mac[2] = 0x23;
+    dest_mac[3] = 0xbb;
+    dest_mac[4] = 0x10;
+    dest_mac[5] = 0xaa;
 
 
 }
@@ -126,7 +126,7 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 	struct rthdr* rth = (struct rthdr*)(packetOut + sizeof(struct ethhdr));
 	memcpy(eth->h_source, my_mac, ETH_ALEN);
     memcpy(eth->h_dest, dest_mac, ETH_ALEN);
-	eth->h_proto = htons(ETH_P_IP);
+	eth->h_proto = ETH_P_IP;
 	rth->saddr = (u_int16_t)(my_addr & 0xffff);
 	rth->daddr = (u_int16_t)(dest_addr & 0xffff);
 	rth->ttl = (u_int8_t)(0x10 & 0xff);
@@ -219,7 +219,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
                     //printTime();
                     if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
                     time_e = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
-                    printf("TIME FOR DATA TRANSMISSION ONLY: %f \n", time_e);
+                    printf("TIME FOR DATA TRANSMISSION: %f \n", time_e);
                     //printf("THROUGHPUT: %f Bytes/s\n", filesize / time_e);
                     exit(1);
                 }

@@ -94,9 +94,9 @@ void init(){
     dest_mac[0] = 0x00;
     dest_mac[1] = 0x04;
     dest_mac[2] = 0x23;
-    dest_mac[3] = 0x9F;
-    dest_mac[4] = 0x13;
-    dest_mac[5] = 0xBB;
+    dest_mac[3] = 0xbb;
+    dest_mac[4] = 0x1f;
+    dest_mac[5] = 0x61;
 
     if(ret != 0)
         printf("Error getting Local MAC with value %d \n", ret);
@@ -134,7 +134,7 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	int size = (int) header->len;
 	//print_rl_packet(stdout, packet, size);
 	int ret = 0, hdrlen, payload_size;
-	fprintf(stdout,"PP from %d with size %d\n", rth->saddr, size);
+	//fprintf(stdout,"PP from %d with size %d\n", rth->saddr, size);
 	if(rth->saddr == my_addr){
         //fprintf(stdout, "Wrong addr \n");
         return;
@@ -352,7 +352,7 @@ int generate_route_on_resend_packet(u_char* packetOut, int size, int type, int s
 	struct ethhdr* eth = (struct ethhdr*)packetOut;
 	memcpy(eth->h_source, my_mac, ETH_ALEN);
     memcpy(eth->h_dest, dest_mac, ETH_ALEN);
-	eth->h_proto = htons(ETH_P_IP);
+	eth->h_proto = ETH_P_IP;
 	struct rthdr* rth = (struct rthdr*)(packetOut + sizeof(struct ethhdr));
 	rth->saddr = (u_int16_t)(my_addr & 0xffff);
 	rth->daddr = (u_int16_t)(dest_addr & 0xffff);
