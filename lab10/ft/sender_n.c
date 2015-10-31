@@ -15,17 +15,17 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <time.h>
-#include "sender.h"
+#include "sender_n.h"
 #include "../routing.h"
 #include "../printp.h"
-#define USAGE "Usage: ./sender [filename] [hostname] [portno] "
-#define RETRANSMISSIONS 3
+#define USAGE "Usage: ./sender_n [filename] [hostname1] [hostname2] "
+#define RETRANSMISSIONS 10
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
-uint16_t my_addr, dest_addr;
-unsigned char my_mac[ETH_ALEN], dest_mac[ETH_ALEN];
 
-uint8_t port;
+unsigned char my_mac[ETH_ALEN], node1_mac[ETH_ALEN], node2_mac[ETH_ALEN], node3_mac[ETH_ALEN];
+
+uint16_t my_addr;
 //FILE * fp_read;
 int fp;
 char * data;
@@ -95,14 +95,9 @@ void init(){
 //    if(ret != 0)
 //        printf("Error getting Remote MAC with value %d \n", ret);
 //    printf("Remote MAC for device %s is %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", device_name, dest_mac[0] , dest_mac[1] , dest_mac[2] , dest_mac[3] , dest_mac[4] , dest_mac[5]);
-    dest_mac[0] = 0x00;
-    dest_mac[1] = 0x04;
-    dest_mac[2] = 0x23;
-    dest_mac[3] = 0xbb;
-    dest_mac[4] = 0x10;
-    dest_mac[5] = 0xaa;
-
-
+    node1_mac[0] = 0x00; node1_mac[1] = 0x04; node1_mac[2] = 0x23; node1_mac[3] = 0xbb; node1_mac[4] = 0x1c; node1_mac[5] = 0x24;
+    node2_mac[0] = 0x00; node2_mac[1] = 0x04; node2_mac[2] = 0x23; node2_mac[3] = 0xc7; node2_mac[4] = 0xcb; node2_mac[5] = 0xdc;
+    node3_mac[0] = 0x00; node3_mac[1] = 0x18; node3_mac[2] = 0x8b; node3_mac[3] = 0x41; node3_mac[4] = 0x60; node3_mac[5] = 0x15;
 }
 
 void printTime(){
@@ -115,7 +110,7 @@ void printTime(){
 }
 
 
-int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, int type, int seqNum) {
+int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, int type, int seqNum, int port, int node) {
 
 	if (size < MIN_APP_PKT_LEN) {
 		fprintf(stderr, "ERROR: size should > 60\n");
@@ -125,36 +120,34 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 	struct ethhdr* eth = (struct ethhdr*)packetOut;
 	struct rthdr* rth = (struct rthdr*)(packetOut + sizeof(struct ethhdr));
 	memcpy(eth->h_source, my_mac, ETH_ALEN);
-    memcpy(eth->h_dest, dest_mac, ETH_ALEN);
+	if(node == 1){
+        memcpy(eth->h_dest, node1_mac, ETH_ALEN);
+        rth->daddr = (u_int16_t)(0x0011 & 0xffff);
+	}
+	else if (node == 2){
+      memcpy(eth->h_dest, node2_mac, ETH_ALEN);
+      rth->daddr = (u_int16_t)(0x0022 & 0xffff);
+	}
+	else if (node == 3){
+        memcpy(eth->h_dest, node3_mac, ETH_ALEN);
+        rth->daddr = (u_int16_t)(0x0033 & 0xffff);
+	}
+	else {
+        printf("Wrong node \n");
+        exit(1);
+	}
+
 	eth->h_proto = ETH_P_IP;
 	rth->saddr = (u_int16_t)(my_addr & 0xffff);
-	rth->daddr = (u_int16_t)(dest_addr & 0xffff);
+
 	rth->ttl = (u_int8_t)(0x10 & 0xff);
 	rth->protocol = (u_int8_t)type;
 	rth->size = htons((u_int16_t)size);
 	rth->check = htons(rthdr_chk_gen(rth));
 
-  	//memcpy(&rth, packetOut, sizeof(struct rthdr));
-	//print_data(stdout, packetOut, size);
 	int i, hdrlen, payload_size;
 
 	switch(type) {
-		case ROUTE_ON_CONTROL:
-			fprintf(stdout, "WARNING: generate_route_on_packet: does not support ROUTE_ON_CONTROL\n");
-			return -1;
-		case ROUTE_ON_UNRELIABLE:
-			//printf("generating unreliable packets...\n");
-
-            hdrlen = sizeof(struct ethhdr) + sizeof(struct rthdr) + sizeof(struct urhdr);
-            payload_size = size - hdrlen;
-            //printf("Size: %d, hdrlen: %d, payload size: %d\n", size, hdrlen, payload_size);
-			struct urhdr* urh = (struct urhdr*)(packetOut + sizeof(struct ethhdr) + sizeof(struct rthdr));
-			urh->port = (u_int8_t)(port & 0xff);
-			//print_data(stdout, packetOut, size);
-			memcpy(packetOut + hdrlen, payload, payload_size);
-			urh->check = htons(packet_chk_gen(packetOut, size));
-			printf("Sending a UNRELIABLE packet of size: %d\n" , size);
-			break;
 		case ROUTE_ON_RELIABLE:
 		    //printf("generating reliable packets...\n");
 			hdrlen = sizeof(struct ethhdr) + sizeof(struct rthdr) + sizeof(struct rlhdr);
@@ -176,91 +169,6 @@ int generate_route_on_file_packet(u_char* packetOut, char * payload, int size, i
 	return size;
 }
 
-
-void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet_n) {
-
-    struct rthdr *rth = (struct rthdr*) (packet_n + sizeof(struct ethhdr));
-    u_char *packetIn = (u_char *) packet_n;
-	char err[128];
-	int size = (int) header->len;
-	int ret = 0, hdrlen, payload_size;
-    if(rth->saddr == my_addr)
-        return;
-	ret = routing_opt(packetIn, my_addr);
-    int protocol = rth->protocol;
-	switch(ret) {
-        case P_APPRESPONSE:
-                if(verify_packet_chk(packetIn, size, protocol) < 0){
-                        fprintf(stderr, "Packet checksum verification failed for protocol %d \n", protocol);
-                        exit(1);
-                }
-                hdrlen = sizeof(struct ethhdr) + sizeof(struct rthdr) + sizeof(struct rlhdr);
-                struct rlhdr* rlh = (struct rlhdr*)(packetIn + sizeof(struct ethhdr) + sizeof(struct rthdr));
-
-                if(rlh->port != port){
-                    fprintf(stderr, "Requesting port %d doesnot match my port %d\n", rlh->port, port);
-                    //exit(1);
-                    return;
-                }
-               // printf("Received NACK for %d with payload %d and size %d\n", rlh->seq, packetIn[hdrlen], size);
-                //print_rl_packet(stdout, packetIn, size);
-                if(packetIn[hdrlen] != 0)    //Not a nack packet
-                    return;
-                int seqNum = rlh->seq;
-                int dummy = rlh->dummy;
-               // fprintf(stdout, "Dummy %d \n", dummy);
-                if(dummy == 1){
-                    //print_dummy_packet(packetIn, size);
-                    fprintf(stdout, "TOTAL PACKETS TRANSMITTED: %d\n", no_of_packets);
-                    //printTime();
-                    if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
-                    time_e = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
-                    printf("TIME FOR DATA TRANSMISSION: %f \n", time_e);
-                    //printf("THROUGHPUT: %f Bytes/s\n", filesize / time_e);
-                    exit(1);
-                }
-
-//                u_char packetOut[PACKET_BUF_SIZE];
-//                char payload[PAYLOAD_SIZE];
-//                int payload_size;
-//                if((seqNum == (no_of_packets-1)) && ((filesize % PAYLOAD_SIZE) != 0))
-//                    payload_size = filesize % PAYLOAD_SIZE;
-//                else
-//                    payload_size = PAYLOAD_SIZE;
-//                //fseek(fp_read, seqNum * PAYLOAD_SIZE, SEEK_SET);
-//                memcpy(payload, data + (seqNum * PAYLOAD_SIZE), payload_size);
-//                int pktlen = generate_route_on_file_packet(packetOut, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
-//               // print_dummy_packet(packetOut, pktlen);
-//                //print_rl_packet(stdout, packetOut, pktlen);
-//                if ((ret = pcap_inject(handle_sniffed_nack, packetOut, pktlen)) != pktlen){
-//                    fprintf(stderr, "Fail to inject packet\n");
-//                    fprintf(stderr, "Only %d inserted \n", ret);
-//                // exit(1);
-//                }
-//                fprintf(stdout, "Sent R_Seq #: %d with %d to %d\n", seqNum, ret, dest_addr);
-
-
-        default:
-            break;
-
-	}
-}
-
-void* resend_packet(void* a)
-{
-
-    char err[128];
-    if ( (handle_sniffed_nack = pcap_open_live(device_name, BUFSIZ, 1, 100, err)) == NULL ) {
-		fprintf(stderr, "Error opening device %s, with error message %s\n", device_name, err);
-		exit(1);
-	}
-	//printf( "OPEN DONE\n");
-	pcap_loop(handle_sniffed_nack , -1, process_packet , NULL);	// use it to receive NACK
-    while(1){
-        //fprintf(stdout, "insdide thread\n");
-    }
-    pcap_close(handle_sniffed_nack);
-}
 
 
 void mapfile(char *filename){
@@ -331,16 +239,17 @@ int main(int argc, char *argv[])
 	//printf("generating packets...\n");
 
 //	Create thread to handle resend
-	if((pthread_create(&resend_thread, NULL, resend_packet, NULL)) != 0){
-        fprintf(stderr, "error in creating pthread. n");
-        exit(1);
-    }
+//	if((pthread_create(&resend_thread, NULL, resend_packet, NULL)) != 0){
+//        fprintf(stderr, "error in creating pthread. n");
+//        exit(1);
+//    }
 
     u_char packet[PACKET_BUF_SIZE];
     char payload[PAYLOAD_SIZE];
 
     int payload_size;
     long offset = 0;
+    int dest1, dest2;
     init();
     mapfile(argv[1]);
 //    fp_read = fopen(argv[1], "r");
@@ -357,17 +266,30 @@ int main(int argc, char *argv[])
     //fseek(fp_read, 0L, SEEK_SET);
 
     if(strcmp(argv[2], "node1") == 0)
-        dest_addr = 0x0011;
+        dest1 = 1;
     else if(strcmp(argv[2], "node2") == 0)
-        dest_addr = 0x0021;
+        dest1 = 2;
     else if(strcmp(argv[2], "node3") == 0)
-        dest_addr = 0x0031;
+        dest1 = 3;
 
-    port = atoi(argv[3]);
+    if(strcmp(argv[3], "node1") == 0)
+        dest2 = 1;
+    else if(strcmp(argv[3], "node2") == 0)
+        dest2 = 2;
+    else if(strcmp(argv[3], "node3") == 0)
+        dest2 = 3;
+
+
+
+//    port = atoi(argv[3]);
     int seqNum = 0; int i;
+    int pktlen;
     //printf("My Ip: %02x, dest IP : %02x, port no: %d, FS: %d, Packet #: %d\n", my_addr, dest_addr, port, filesize, no_of_packets );
     //printf("Sending RELIABLE packets \n");
     if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
+    printTime();
+    printf("Sending ... \n");
+    for(i = 0; i < RETRANSMISSIONS; i++){
     while (seqNum < no_of_packets) {
         //fseek(fp_read, offset, SEEK_SET);
         if((seqNum == (no_of_packets-1)) && ((filesize % PAYLOAD_SIZE) != 0))
@@ -377,28 +299,40 @@ int main(int argc, char *argv[])
         memcpy(payload, data + offset, payload_size);
         //fread(payload, 1, payload_size, fp_read);
         offset = offset + payload_size;
-        //change for RELIABLE/UNRELIABLE
-        //int pktlen = generate_route_on_file_packet(packet, payload, payload_size + UR_HEADER_SIZE, ROUTE_ON_UNRELIABLE );
-        int pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum );
+        // send to 1 destination
+        pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum, 11, dest1 );
         //print_rl_packet(stdout, packet, pktlen);
         //fprintf(stdout, "Seqnum :%d, pktlen: %d\n", seqNum, pktlen);
-        for(i = 0; i < RETRANSMISSIONS; i++){
+        //for(i = 0; i < RETRANSMISSIONS; i++){
             if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
                 fprintf(stderr, "Fail to inject packet\n");
             // exit(1);
             }
-            usleep(20);
-        }
-
+          //  usleep(50);
+        //}
+        usleep(200);
+        // send to 2nd destination
+        pktlen = generate_route_on_file_packet(packet, payload, payload_size + RE_HEADER_SIZE, ROUTE_ON_RELIABLE, seqNum, 12, dest2 );
+        //print_rl_packet(stdout, packet, pktlen);
+        //fprintf(stdout, "Seqnum :%d, pktlen: %d\n", seqNum, pktlen);
+       // for(i = 0; i < RETRANSMISSIONS; i++){
+            if ((ret = pcap_inject(handle_sniffed, packet, pktlen)) < 0){
+                fprintf(stderr, "Fail to inject packet\n");
+            // exit(1);
+            }
+        //    usleep(50);
+       // }
+        usleep(100);
         seqNum++;
+    }
     }
 
     printf("\n");
 
 
-    pthread_join(resend_thread, NULL);
+    //pthread_join(resend_thread, NULL);
     pcap_close(handle_sniffed);
-    pcap_close(handle_sniffed_nack);
+    //pcap_close(handle_sniffed_nack);
     munmap(data, filesize);
     close(fp);
     printf( "ALL DONE\n");

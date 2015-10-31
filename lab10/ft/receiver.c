@@ -278,7 +278,7 @@ void* handleFailures(void *a)
                 int reqSeqNum = getNackSeqNum();
 
                 if(reqSeqNum >= 0 && reqSeqNum < packets_num){
-                send_nack_to_client(reqSeqNum, handle_sniffed_nack);
+                //send_nack_to_client(reqSeqNum, handle_sniffed_nack);
                 }
             }
 
@@ -310,7 +310,7 @@ void send_nack_to_client(int seqNum, pcap_t *handle_sniffed_nack)
     u_char packet[PACKET_BUF_SIZE];
     n = generate_route_on_resend_packet(packet, 70, ROUTE_ON_RELIABLE, seqNum);
    // print_dummy_packet(packet, n);
-   //fprintf(stdout, "Send nack for seqnum : %d to %d of size %d\n", seqNum, dest_addr, n);
+   fprintf(stdout, "Send nack for seqnum : %d to %d of size %d\n", seqNum, dest_addr, n);
     if ((ret = pcap_inject(handle_sniffed_nack, packet, n)) < 0){
             fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
