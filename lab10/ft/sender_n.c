@@ -95,8 +95,8 @@ void init(){
 //    if(ret != 0)
 //        printf("Error getting Remote MAC with value %d \n", ret);
 //    printf("Remote MAC for device %s is %.2X-%.2X-%.2X-%.2X-%.2X-%.2X \n", device_name, dest_mac[0] , dest_mac[1] , dest_mac[2] , dest_mac[3] , dest_mac[4] , dest_mac[5]);
-    node1_mac[0] = 0x00; node1_mac[1] = 0x04; node1_mac[2] = 0x23; node1_mac[3] = 0xbb; node1_mac[4] = 0x1c; node1_mac[5] = 0x24;
-    node2_mac[0] = 0x00; node2_mac[1] = 0x04; node2_mac[2] = 0x23; node2_mac[3] = 0xc7; node2_mac[4] = 0xcb; node2_mac[5] = 0xdc;
+    node1_mac[0] = 0x00; node1_mac[1] = 0x15; node1_mac[2] = 0x17; node1_mac[3] = 0x57; node1_mac[4] = 0xc7; node1_mac[5] = 0x99;
+    node2_mac[0] = 0x00; node2_mac[1] = 0x04; node2_mac[2] = 0x23; node2_mac[3] = 0xc5; node2_mac[4] = 0xde; node2_mac[5] = 0x60;
     node3_mac[0] = 0x00; node3_mac[1] = 0x18; node3_mac[2] = 0x8b; node3_mac[3] = 0x41; node3_mac[4] = 0x60; node3_mac[5] = 0x15;
 }
 

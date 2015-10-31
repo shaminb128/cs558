@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
 //        pthread_exit(0);
 //        exit(1);
 //    }
-    printf("Receiving .... \n")
+    printf("Receiving .... \n");
 	pcap_loop(handle_sniffed, -1, process_packet , NULL);	// -1 means an infinite loop
     //printf("Ret : %d \n", ret);
     //fprintf(stdout, "test pcap loop\n");
