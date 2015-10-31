@@ -16,6 +16,7 @@
 #include <netinet/ip.h>
 #include <netinet/in.h>
 #include <netdb.h> //hostent
+#include <time.h>
 
 #include "packet.h"
 #include "packet_util.h"
@@ -35,20 +36,23 @@
 
 
 u_char packetOut[PACKET_BUF_SIZE];
+struct timespec start, stop;
+double duration;
 
 void send_test_packet(pcap_t* handle, int testno, int packetsize, int source, int dest) {
 	printf("==========> Test %d: generating packets of %d bytes...\n", testno, packetsize);
-	int pktlen = generate_openflow_test_packet(packetOut, packetsize, source, dest);
+	int pktlen = generate_openflow_test_packet(packetOut, packetsize, testno, source, dest);
 	int ret = 0;
-	print_data(stdout, packetOut, pktlen);
+	//print_data(stdout, packetOut, pktlen);
 	/*printf("generating packets of 8 bytes...\n");
 	generate_random_packet(packetOut, 8);*/
 
-	if ((ret = pcap_inject(handle, packetOut, packetsize)) < 0){
+	if ((ret = pcap_inject(handle, packetOut, pktlen)) < 0){
 		fprintf(stderr, "Fail to inject packet\n");
 		// exit(1);
 	}
-	printf( "==========> Test %d: DONE\n", testno);
+	printf( "DONE\n");
+	usleep(50);
 	//sleep(1);
 }
 
@@ -57,7 +61,15 @@ void process_packet(u_char *args, const struct pcap_pkthdr *header, const u_char
 	printf("Received HELLO\n");
 	print_data(stdout, (u_char*)packet, size);
 }
-
+void receive_ack(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
+	int size = (int) header->len;
+	if (verify_packet_chk((u_char*)packet, size, ROUTE_ON_RELIABLE) == 0) {
+		if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) { perror( "clock gettime" );}
+		duration = (stop.tv_sec - start.tv_sec)+ (double)(stop.tv_nsec - start.tv_nsec)/1e9;
+		fprintf(stdout, "Execution time: %f sec, throughput: %fpps, %fbps\n", duration, TEST_SEQ_CNT/duration, TEST_SEQ_CNT*256*8/duration);
+		exit(1);
+	}
+}
 int main (int argc, char** argv) {
 	if (argc < 3) {
 		printf("Usage: sudo ./sender source destination\n");
@@ -105,13 +117,15 @@ int main (int argc, char** argv) {
 	}
 	printf( "DONE\n");
 
-	pcap_loop(handle_sniffed , 3 , process_packet , NULL);
+	pcap_loop(handle_sniffed , 5 , process_packet , NULL);
 
 	int i;
-	printf("Start to send packets...\n");
-	for (i = 0; i < 20; i++) {
-		send_test_packet(handle_sniffed, i, 100+i, source, dest);
+	if( clock_gettime( CLOCK_REALTIME, &start) == -1 ) { perror( "clock gettime" );}
+	for (i = 0; i < TEST_SEQ_CNT; i++) {
+		send_test_packet(handle_sniffed, i, 256, source, dest);
 	}
+	printf("Waiting for ACK...\n");
+	pcap_loop(handle_sniffed, -1, receive_ack, NULL);
 	
 
 

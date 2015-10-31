@@ -5,9 +5,9 @@ routing: routing.o
 packet_test: packet_test.o routing.o printp.o packet_util.o
 	gcc -g -Wall -o packet_test packet_test.o routing.o printp.o packet_util.o
 pcap_sender: pcap_sender.o printp.o packet_util.o
-	gcc -g -Wall -o pcap_sender pcap_sender.o printp.o packet_util.o -lpcap
+	gcc -g -Wall -o pcap_sender pcap_sender.o printp.o packet_util.o -lpcap -lrt
 pcap_receiver: pcap_receiver.o printp.o packet_util.o
-	gcc -g -Wall -o pcap_receiver pcap_receiver.o printp.o packet_util.o -lpcap
+	gcc -g -Wall -o pcap_receiver pcap_receiver.o printp.o packet_util.o -lpcap -lrt
 
 router.o: router.c packet.h printp.h routing.h packet_util.h
 	gcc -g -c -Wall router.c
