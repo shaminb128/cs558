@@ -40,7 +40,7 @@ struct timespec start, stop;
 double duration;
 
 void send_test_packet(pcap_t* handle, int testno, int packetsize, int source, int dest) {
-	printf("==========> Test %d: generating packets of %d bytes...\n", testno, packetsize);
+	printf("==========> Test %d: generating packets of %d bytes...", testno, packetsize);
 	int pktlen = generate_openflow_test_packet(packetOut, packetsize, testno, source, dest);
 	int ret = 0;
 	//print_data(stdout, packetOut, pktlen);

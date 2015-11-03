@@ -237,25 +237,25 @@ int generate_openflow_test_packet(u_char* packetOut, int size, int seq, int sour
 			eth->h_source[0] = 0x00;
 			eth->h_source[1] = 0x15;
 			eth->h_source[2] = 0x17;
-			eth->h_source[3] = 0x57;
-			eth->h_source[4] = 0xc7;
-			eth->h_source[5] = 0x8a;
+			eth->h_source[3] = 0x5d;
+			eth->h_source[4] = 0x17;
+			eth->h_source[5] = 0x0c;
 			break;
 		case 2:
 			eth->h_source[0] = 0x00;
 			eth->h_source[1] = 0x15;
 			eth->h_source[2] = 0x17;
-			eth->h_source[3] = 0x57;
-			eth->h_source[4] = 0xc7;
-			eth->h_source[5] = 0xc2;
+			eth->h_source[3] = 0x5d;
+			eth->h_source[4] = 0x13;
+			eth->h_source[5] = 0x6c;
 			break;
 		case 3:
 			eth->h_source[0] = 0x00;
 			eth->h_source[1] = 0x15;
 			eth->h_source[2] = 0x17;
-			eth->h_source[3] = 0x57;
-			eth->h_source[4] = 0xc6;
-			eth->h_source[5] = 0xf1;
+			eth->h_source[3] = 0x5d;
+			eth->h_source[4] = 0x33;
+			eth->h_source[5] = 0x64;
 			break;
 		default:
 			return -1; 
@@ -266,25 +266,25 @@ int generate_openflow_test_packet(u_char* packetOut, int size, int seq, int sour
 			eth->h_dest[0] = 0x00;
 			eth->h_dest[1] = 0x15;
 			eth->h_dest[2] = 0x17;
-			eth->h_dest[3] = 0x57;
-			eth->h_dest[4] = 0xc7;
-			eth->h_dest[5] = 0x8a;
+			eth->h_dest[3] = 0x5d;
+			eth->h_dest[4] = 0x17;
+			eth->h_dest[5] = 0x0c;
 			break;
 		case 2:
 			eth->h_dest[0] = 0x00;
 			eth->h_dest[1] = 0x15;
 			eth->h_dest[2] = 0x17;
-			eth->h_dest[3] = 0x57;
-			eth->h_dest[4] = 0xc7;
-			eth->h_dest[5] = 0xc2;
+			eth->h_dest[3] = 0x5d;
+			eth->h_dest[4] = 0x13;
+			eth->h_dest[5] = 0x6c;
 			break;
 		case 3:
 			eth->h_dest[0] = 0x00;
 			eth->h_dest[1] = 0x15;
 			eth->h_dest[2] = 0x17;
-			eth->h_dest[3] = 0x57;
-			eth->h_dest[4] = 0xc6;
-			eth->h_dest[5] = 0xf1;
+			eth->h_dest[3] = 0x5d;
+			eth->h_dest[4] = 0x33;
+			eth->h_dest[5] = 0x64;
 			break;
 		default:
 			return -1; 

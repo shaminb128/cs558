@@ -105,7 +105,7 @@ class Tutorial (object):
       log.debug("==========> adding mac_to_port_entry: src = " + str(packet.src) + "; in_port = " + str(packet_in.in_port))
       self.mac_to_port[packet.src] = packet_in.in_port
     
-    if packet.dst == EthAddr("00:15:17:57:c7:c2"):
+    if packet.dst == EthAddr("00:15:17:5d:13:6c"):
       log.debug("packet destination is node2, redirecting to node3...")
       msg = of.ofp_flow_mod()
       msg.match = of.ofp_match.from_packet(packet)
@@ -113,7 +113,7 @@ class Tutorial (object):
       msg.hard_timeout = 3600
       msg.buffer_id = packet_in.buffer_id
       msg.priority = 65535
-      msg.actions.append(of.ofp_action_dl_addr.set_dst(EthAddr("00:15:17:57:c6:f1")))
+      msg.actions.append(of.ofp_action_dl_addr.set_dst(EthAddr("00:15:17:5d:33:64")))
       msg.actions.append(of.ofp_action_output(port = 3))
       # msg.data = event.ofp
       log.debug("==========> Installing flow... src = " + str(packet.src) + "; dest = " + str(packet.dst) + "; port = 3")
