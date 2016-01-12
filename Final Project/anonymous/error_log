@@ -1,0 +1,9 @@
+gcc -c -o obj/pcap_sender.o src/pcap_sender.c -g -Wall -Iinclude
+gcc -c -o obj/printp.o src/printp.c -g -Wall -Iinclude
+gcc -c -o obj/packet_util.o src/packet_util.c -g -Wall -Iinclude
+gcc -c -o obj/des.o src/des.c -g -Wall -Iinclude
+gcc -c -o obj/libkeystore.o src/libkeystore.c -g -Wall -Iinclude
+gcc -g -Wall -Iinclude -o pcap_sender obj/pcap_sender.o obj/printp.o obj/packet_util.o obj/des.o obj/libkeystore.o -lpcap -lrt -lcrypto -pthread
+gcc -c -o obj/pcap_receiver.o src/pcap_receiver.c -g -Wall -Iinclude
+gcc -g -Wall -Iinclude -o pcap_receiver obj/pcap_receiver.o obj/printp.o obj/packet_util.o obj/des.o obj/libkeystore.o -lpcap -lrt -lcrypto -pthread
+gcc -c -o obj/dh_1.o src/dh_1.c -g -Wall -Iinclude
